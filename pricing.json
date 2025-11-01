@@ -1,0 +1,14 @@
+{
+  "services": [
+    {"name": "Juukselõikus naistele", "description": "Pesu, lõikus ja viimistlus vastavalt näokujule.", "price": 35, "duration": 50, "category": "Juuksed"},
+    {"name": "Juukselõikus meestele", "description": "Täpne lõikus ja stiliseerimine.", "price": 22, "duration": 35, "category": "Juuksed"},
+    {"name": "Värvimine (lühikesed juuksed)", "description": "Ühtlane värv või toonimine.", "price": 55, "duration": 90, "category": "Juuksed"},
+    {"name": "Värvimine (pikad juuksed)", "description": "Mitmetasandiline värvimine või balayage.", "price": 85, "duration": 150, "category": "Juuksed"},
+    {"name": "Maniküür klassikaline", "description": "Küünte hooldus, küünenahad, kerge massaaž.", "price": 28, "duration": 45, "category": "Küüned"},
+    {"name": "Geellakk", "description": "Püsiv geellakk + vormistus.", "price": 32, "duration": 60, "category": "Küüned"},
+    {"name": "Näohooldus niisutav", "description": "Puhastus, koorimine, niisutav mask.", "price": 49, "duration": 60, "category": "Näohooldus"},
+    {"name": "Näohooldus anti-age", "description": "Pinguldav hoolitsus + spetsiaalne seerum.", "price": 65, "duration": 75, "category": "Näohooldus"},
+    {"name": "Kulmude kujundus", "description": "Vahatamine + kerge toon.", "price": 15, "duration": 20, "category": "Lisateenus"},
+    {"name": "Ripsmete koolutamine", "description": "Keemiline lash lift viimistlusega.", "price": 42, "duration": 55, "category": "Lisateenus"}
+  ]
+}
