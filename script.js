@@ -65,14 +65,33 @@ function renderServices(){
 function serviceCard(service){
   const card = document.createElement('article');
   card.className = 'service-card';
+  const hasDesc = service.description && service.description.length > 0;
+  const isLongDesc = hasDesc && service.description.length > 80;
+
   card.innerHTML = `
     <div class="service-top">
       <h3>${service.name}</h3>
-      <span class="service-separator" aria-hidden="true"></span>
       <span class="price">${formatPrice(service.price)}</span>
     </div>
-    ${service.description ? `<p class="service-desc">${service.description}</p>` : ''}
+    ${hasDesc ? `
+      <div class="service-desc-wrap${isLongDesc ? ' collapsed' : ''}">
+        <p class="service-desc">${service.description}</p>
+        ${isLongDesc ? '<button class="desc-toggle" aria-expanded="false">Loe rohkem</button>' : ''}
+      </div>
+    ` : ''}
   `;
+
+  // Add toggle functionality for long descriptions
+  if (isLongDesc) {
+    const toggle = card.querySelector('.desc-toggle');
+    const wrap = card.querySelector('.service-desc-wrap');
+    toggle.addEventListener('click', () => {
+      const expanded = wrap.classList.toggle('collapsed');
+      toggle.textContent = expanded ? 'Loe rohkem' : 'Näita vähem';
+      toggle.setAttribute('aria-expanded', !expanded);
+    });
+  }
+
   return card;
 }
 
@@ -101,7 +120,7 @@ function injectStructuredData(){
     'priceRange':'€€',
     'openingHours':'E-L Kokkuleppel',
     'servesCuisine':'',
-    'description':'Pargi Ilustuudio Tartus: juuksehooldus, küüned, näohooldused.'
+    'description':'Pargi Ilustuudio Tartus: näohooldused, ripsmed ja kulmud, depilatsioon.'
   };
   $('#structured-data').textContent = JSON.stringify(data);
 }

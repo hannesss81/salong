@@ -233,6 +233,12 @@ h1, h2, h3, h4 { line-height: 1.2; }
   letter-spacing: -0.02em;
 }
 .hero h2 span.highlight {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-alt));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero h2 span.highlight.accent {
   background: linear-gradient(135deg, var(--accent-strong), var(--accent-warm));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -337,9 +343,10 @@ h1, h2, h3, h4 { line-height: 1.2; }
 }
 .service-card h3 {
   margin: 0;
-  font-size: 1rem;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0;
   color: var(--text);
 }
 .service-meta {
@@ -356,31 +363,48 @@ h1, h2, h3, h4 { line-height: 1.2; }
 .service-desc {
   font-size: 0.85rem;
   line-height: 1.5;
-  margin: 0.5rem 0 0;
+  margin: 0;
   color: var(--text-muted);
 }
-.service-duration {
-  font-size: 0.7rem;
-  font-weight: 500;
+.service-desc-wrap {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.service-desc-wrap.collapsed .service-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.desc-toggle {
+  background: none;
+  border: none;
   color: var(--accent-strong);
-  background: linear-gradient(135deg, rgba(200, 230, 208, 0.5), rgba(200, 230, 208, 0.3));
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-pill);
-  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-top: 0.5rem;
+  transition: color 0.2s var(--transition-smooth);
+}
+.desc-toggle:hover {
+  color: var(--accent-alt);
+  text-decoration: underline;
 }
 .service-top {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 }
-.service-top h3 { flex: none; word-break: break-word; }
-.service-separator {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, var(--border), transparent);
+.service-top h3 {
+  flex: 1;
+  word-break: break-word;
 }
-.service-top .price { align-self: flex-start; }
+.service-top .price {
+  flex-shrink: 0;
+}
 
 .about-section, .gallery-section, .contact-section {
   padding: 5rem 1.5rem;
@@ -465,7 +489,8 @@ h1, h2, h3, h4 { line-height: 1.2; }
   margin-bottom: 2rem;
 }
 .contact-section h3 {
-  font-size: 1rem;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
   color: var(--text);
