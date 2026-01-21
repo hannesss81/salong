@@ -1,0 +1,268 @@
+{
+  "services": [
+    {
+      "name": "Näopuhastus",
+      "description": "",
+      "price": 45,
+      "categories": ["Baashooldused"]
+    },
+    {
+      "name": "Näopuhastus koos massaažiga",
+      "description": "",
+      "price": 55,
+      "categories": ["Baashooldused"]
+    },
+    {
+      "name": "Seljapuhastus",
+      "description": "",
+      "price": 50,
+      "categories": ["Baashooldused"]
+    },
+    {
+      "name": "Massaaž koos maskiga",
+      "description": "",
+      "price": 50,
+      "categories": ["Baashooldused"]
+    },
+    {
+      "name": "Mask",
+      "description": "",
+      "price": 40,
+      "categories": ["Baashooldused"]
+    },
+    {
+      "name": "Sothys HYDRA 4Ha niisutav intensiivhooldus",
+      "description": "Intensiivne ja efektiivne erihooldus, mis tagab kõikide nahatüüpide niisutuse vajadusele. Eriti sobilik nahale, millel puudub heaolutunne, samuti nn. \"ülehooldatud\"/valesti hooldatud näonaha puhul. Sisaldab 4 erineva hüaluroonhappe kombinatsiooni ja 2 Sothys patenteeritud aktiivkomponenti.",
+      "price": 95,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Noorendav intensiivhooldus ßP3",
+      "description": "Nahka intensiivselt noorendav erihooldus. Efekt juba peale ühte hooldust! Sothys soovitab seda intensiivhooldust võtta kuurina (mis koosneb kolmest hooldusest), kuid efekt juba peale esimest hooldust.",
+      "price": 95,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Sothys DX Glow intensiivhooldus",
+      "description": "DX Glow näohoolduse eesmärk on kaitsta nahka saaste ja kiirguse (arvuti ja telefoni ekraanid) eest. Sobib igale nahatüübile, eriti sobilik väsinud, ärritunud nahale.",
+      "price": 90,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Kirgastav profihooldus",
+      "description": "Kirgastava hoolduse eesmärk on kanda hoolt igat tüüpi tumedate nahalaikude eest. Sobib igale nahatüübile.",
+      "price": 90,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Erihooldus probleemsele nahale",
+      "description": "Hoolduse käigus kooritakse näonahka ja vajadusel teostatakse mehaaniline puhastus üksikutele vistrikulistele elementidele. Tänu aktiivkomponentidele (teepuuõli, salitsüülhape) on nahk hoolduse järgselt klaarim ja puhtam.",
+      "price": 60,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Rahustav erihooldus tundlikule nahale",
+      "description": "Sothys taasavastas allikate raviva toime luues Spa™ termaalveega professionaalse näohoolduse tundlikule nahale.",
+      "price": 70,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Hooajaline hooldus",
+      "description": "Parabeenivaba hooaja hapnikuhooldus pakub heaolu ja kiiret lõõgastust ning täidab naha vajadusi vastavalt aastaajale. Sobib kõikidele nahatüüpidele. Hooldus mõeldud nii naistele kui ka meestele.",
+      "price": 65,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Double Peel professionaalne kooriv hooldus",
+      "description": "Hooldus sisaldab kõrge kontsentratsiooniga koorijaid, et tagada suur efektiivsus koos täieliku ohutusega. Sobib igas vanuses ja igat tüüpi nahale, välja arvatud tundlikule ja/või reaktiivsele nahale.",
+      "price": 90,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Silmaümbruse erihooldus",
+      "description": "Silmaümbruse hooldus silub peeneid kortsukesi ning vähendab turseid ja muudab tumedad silmaümbrused vähem märgatavaks.",
+      "price": 50,
+      "categories": ["Sothys"]
+    },
+    {
+      "name": "Injektsioonivaba biorevitalisatsioon ja mesoteraapia nanokomplekside seerumiga",
+      "description": "Naha sügavniisutus ja taastamine. Aquakoorimine, nanoseerumid, LED mask.",
+      "price": 76,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Injektsioonivaba biorevitalisatsioon ja mesoteraapia + ANTI-AGE modelleeriv näo-, kaela ja dekolteemassaaž",
+      "description": "Biorevitalisatsioon koos 20-minutilise ANTI-AGE modelleeriva massaažiga.",
+      "price": 96,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Protseduur \"Eksklusiivne ilukomplekt\"",
+      "description": "Kõikehõlmav hooldus: nägu, silmaümbrus, kael, dekoltee, käed ja küünarnukid.",
+      "price": 121,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "KAKS ÜHES! \"SuperLifting Mask\" + injektsioonivaba biorevitalisatsioon ja mesoteraapia",
+      "description": "Lifting mask koos biorevitalisatsiooniga. Näolihaste tugevdamine, kortsude vähendamine.",
+      "price": 140,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Näolihaste jooga \"Super Lifting Program Mask\" botox- ja filler-efektiga",
+      "description": "Näojooga mask botox- ja filler-efektiga. Tõhus alternatiiv süstiprotseduuridele.",
+      "price": 76,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Noorendav koorimine Nanotip Luxury nanonõeltega + aqua-koorimine",
+      "description": "Valutu alternatiiv keemilistele koorimistele. Nanonõelad eemaldavad surnud naharakud.",
+      "price": 60,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Aquakoorimine + LED MASK teraapia",
+      "description": "Aquakoorimine koos LED valgusteraapiaga.",
+      "price": 40,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "Sügavpuhastus + aquakoorimine",
+      "description": "Põhjalik puhastus ja aquakoorimine.",
+      "price": 30,
+      "categories": ["NanoAsia"]
+    },
+    {
+      "name": "RF Lifting",
+      "description": "Bi-, tri- ja multipolaarsed raadiolained soojendavad kudesid, seovad kollageeni fibrille ja stimuleerivad fibroblastide migratsiooni ning uue kollageeni sünteesi. Pinguldab nahka ja vähendab kortse. Soovitatav kuurina.",
+      "price": 75,
+      "categories": ["CNC", "Aparaadihooldused"]
+    },
+    {
+      "name": "Teemantlihvimine",
+      "description": "Õrn ja valutu viis surnud naharakkude eemaldamiseks: teemantotsiku ja vaakumi abil lihvitakse sarvkihti, stimuleerides naha uuenemist ning parandades tekstuuri. Sobib normaalsele, kombineeritud, rasusele ja küpsele nahale.",
+      "price": 60,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Microneedling (Clinicare)",
+      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
+      "price": 90,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Microneedling (Arkana)",
+      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
+      "price": 200,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Ultrahelihooldus",
+      "description": "Ultrahelilaine puhastab pindmised kihid ja stimuleerib sügavamaid: parandab vereringet, lümfiringet ja ainevahetust ning aitab aktiivaineid imenduda. Niisutab, pinguldab ja kirgastab. Sobib kuivale, tuhmile, väsinud ja küpsele nahale. Ei sobi põletikulisele/tundlikule nahale.",
+      "price": 60,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Ripsmete keemiline värvimine",
+      "description": "",
+      "price": 15,
+      "categories": ["Ripsmed/Kulmud"]
+    },
+    {
+      "name": "Kulmude keemiline värvimine",
+      "description": "",
+      "price": 15,
+      "categories": ["Ripsmed/Kulmud"]
+    },
+    {
+      "name": "Kulmude korrigeerimine",
+      "description": "",
+      "price": 15,
+      "categories": ["Ripsmed/Kulmud"]
+    },
+    {
+      "name": "Kulmude värvimine koos korrigeerimisega",
+      "description": "",
+      "price": 20,
+      "categories": ["Ripsmed/Kulmud"]
+    },
+    {
+      "name": "Ripsmete ja kulmude värvimine koos korrigeerimisega",
+      "description": "",
+      "price": 25,
+      "categories": ["Ripsmed/Kulmud"]
+    },
+    {
+      "name": "Päevameik",
+      "description": "",
+      "price": 35,
+      "categories": ["Jumestus"]
+    },
+    {
+      "name": "Õhtumeik",
+      "description": "",
+      "price": 40,
+      "categories": ["Jumestus"]
+    },
+    {
+      "name": "Pruudimeik",
+      "description": "",
+      "price": 40,
+      "categories": ["Jumestus"]
+    },
+    {
+      "name": "Jalad",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 40,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Sääred",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 25,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Reied",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 20,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Bikiinipiirkond",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 25,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Brasiilia bikiin",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 40,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Käed",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 20,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Kaenlaalused",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 15,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Ülahuul",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 8,
+      "categories": ["Depilatsioon"]
+    },
+    {
+      "name": "Ülahuul ja lõug",
+      "description": "Kasutusel Lycon vahad.",
+      "price": 15,
+      "categories": ["Depilatsioon"]
+    }
+  ]
+}

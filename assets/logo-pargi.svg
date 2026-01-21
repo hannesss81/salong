@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1d6b4a"/>
+      <stop offset="100%" style="stop-color:#145438"/>
+    </linearGradient>
+    <linearGradient id="petalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff"/>
+      <stop offset="100%" style="stop-color:#f0e6dc"/>
+    </linearGradient>
+    <linearGradient id="centerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4a574"/>
+      <stop offset="100%" style="stop-color:#c4956a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Main circle background -->
+  <circle cx="30" cy="30" r="28" fill="url(#bgGrad)"/>
+
+  <!-- Centered 5-petal flower using transform for perfect symmetry -->
+  <g transform="translate(30, 30)">
+    <!-- Top petal (0°) -->
+    <ellipse cx="0" cy="-12" rx="5.5" ry="9" fill="url(#petalGrad)" opacity="0.95"/>
+    <!-- Top-right petal (72°) -->
+    <ellipse cx="0" cy="-12" rx="5.5" ry="9" fill="url(#petalGrad)" opacity="0.9" transform="rotate(72)"/>
+    <!-- Bottom-right petal (144°) -->
+    <ellipse cx="0" cy="-12" rx="5.5" ry="9" fill="url(#petalGrad)" opacity="0.85" transform="rotate(144)"/>
+    <!-- Bottom-left petal (216°) -->
+    <ellipse cx="0" cy="-12" rx="5.5" ry="9" fill="url(#petalGrad)" opacity="0.85" transform="rotate(216)"/>
+    <!-- Top-left petal (288°) -->
+    <ellipse cx="0" cy="-12" rx="5.5" ry="9" fill="url(#petalGrad)" opacity="0.9" transform="rotate(288)"/>
+  </g>
+
+  <!-- Flower center -->
+  <circle cx="30" cy="30" r="7" fill="url(#centerGrad)"/>
+
+  <!-- Cute sparkle dots -->
+  <circle cx="29" cy="28" r="1.5" fill="#fff" opacity="0.8"/>
+  <circle cx="32" cy="31" r="1" fill="#fff" opacity="0.6"/>
+</svg>
