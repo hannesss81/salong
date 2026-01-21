@@ -713,6 +713,55 @@ h1, h2, h3, h4 { line-height: 1.2; }
   letter-spacing: 0.5px;
 }
 
+/* Highlights / Good to know section */
+.highlights-section {
+  padding: 5rem 1.5rem;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+.highlights-section h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.highlights-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.highlight-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s var(--transition-smooth);
+}
+.highlight-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+}
+.highlight-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+.highlight-card h3 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+}
+.highlight-card p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 /* Facebook link styling */
 .social-links .facebook-link {
   background: #1877f2;
