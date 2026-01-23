@@ -139,6 +139,12 @@
       "categories": ["CNC", "Aparaadihooldused"]
     },
     {
+      "name": "CNC biomimeetilised eksosoomid",
+      "description": "Kõrgtehnoloogiline seerum, mis ühendab ülipuhast hüaluroonhapet biomimeetiliste veganeksosoomidega. Pakub intensiivset regeneratsiooni, pinguldust ja vähendab hüperpigmentatsiooni. Tulemuseks siledam ja säravam nahk.",
+      "price": 150,
+      "categories": ["CNC", "Aparaadihooldused"]
+    },
+    {
       "name": "Teemantlihvimine",
       "description": "Õrn ja valutu viis surnud naharakkude eemaldamiseks: teemantotsiku ja vaakumi abil lihvitakse sarvkihti, stimuleerides naha uuenemist ning parandades tekstuuri. Sobib normaalsele, kombineeritud, rasusele ja küpsele nahale.",
       "price": 60,
@@ -148,6 +154,24 @@
       "name": "Microneedling (Clinicare)",
       "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
       "price": 90,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Clinicare näohooldus",
+      "description": "Stimuleerib kollageeni ja elastiini sünteesi, taastab naha niiskuse ja pingulduse ning pakub antioksüdatiivset kaitset.",
+      "price": 90,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "MinePeel keemiline koorimine",
+      "description": "Mineraliseeritud nahakoorija 7 erineva happe ja looduslike mineraalidega. Stimuleerib fibroplaste, soodustab kollageeni ja elastiini sünteesi. Parandab naha hapnikuga varustatust ja rakkude ainevahetust. Puhastab, uuendab ja tugevdab nahka.",
+      "price": 85,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "MinePeel + Wonderm",
+      "description": "Kaks täiendavat professionaalset hooldust: MinePeel mineraliseeritud koorija 7 happe ja mineraalidega stimuleerib kollageeni sünteesi ning uuendab nahka. Wonderm bioaktiivne booster taastab niiskuse ja elastsuse pärast happeprotseduuri.",
+      "price": 150,
       "categories": ["Aparaadihooldused"]
     },
     {
