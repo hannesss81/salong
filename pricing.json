@@ -166,13 +166,13 @@
       "name": "MinePeel keemiline koorimine",
       "description": "Mineraliseeritud nahakoorija 7 erineva happe ja looduslike mineraalidega. Stimuleerib fibroplaste, soodustab kollageeni ja elastiini sünteesi. Parandab naha hapnikuga varustatust ja rakkude ainevahetust. Puhastab, uuendab ja tugevdab nahka.",
       "price": 85,
-      "categories": ["Aparaadihooldused"]
+      "categories": ["Aparaadihooldused", "MinePeel"]
     },
     {
       "name": "MinePeel + Wonderm",
       "description": "Kaks täiendavat professionaalset hooldust: MinePeel mineraliseeritud koorija 7 happe ja mineraalidega stimuleerib kollageeni sünteesi ning uuendab nahka. Wonderm bioaktiivne booster taastab niiskuse ja elastsuse pärast happeprotseduuri.",
       "price": 150,
-      "categories": ["Aparaadihooldused"]
+      "categories": ["Aparaadihooldused", "MinePeel", "Wonderm"]
     },
     {
       "name": "Microneedling (Arkana)",
