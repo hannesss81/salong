@@ -133,6 +133,18 @@
       "categories": ["NanoAsia"]
     },
     {
+      "name": "MinePeel keemiline koorimine",
+      "description": "Mineraliseeritud nahakoorija 7 erineva happe ja looduslike mineraalidega. Stimuleerib fibroplaste, soodustab kollageeni ja elastiini sünteesi. Parandab naha hapnikuga varustatust ja rakkude ainevahetust. Puhastab, uuendab ja tugevdab nahka.",
+      "price": 85,
+      "categories": ["MinePeel", "Aparaadihooldused"]
+    },
+    {
+      "name": "MinePeel + Wonderm",
+      "description": "Kaks täiendavat professionaalset hooldust: MinePeel mineraliseeritud koorija 7 happe ja mineraalidega stimuleerib kollageeni sünteesi ning uuendab nahka. Wonderm bioaktiivne booster taastab niiskuse ja elastsuse pärast happeprotseduuri.",
+      "price": 150,
+      "categories": ["MinePeel", "Wonderm", "Aparaadihooldused"]
+    },
+    {
       "name": "RF Lifting",
       "description": "Bi-, tri- ja multipolaarsed raadiolained soojendavad kudesid, seovad kollageeni fibrille ja stimuleerivad fibroblastide migratsiooni ning uue kollageeni sünteesi. Pinguldab nahka ja vähendab kortse. Soovitatav kuurina.",
       "price": 75,
@@ -161,18 +173,6 @@
       "description": "Stimuleerib kollageeni ja elastiini sünteesi, taastab naha niiskuse ja pingulduse ning pakub antioksüdatiivset kaitset.",
       "price": 90,
       "categories": ["Aparaadihooldused"]
-    },
-    {
-      "name": "MinePeel keemiline koorimine",
-      "description": "Mineraliseeritud nahakoorija 7 erineva happe ja looduslike mineraalidega. Stimuleerib fibroplaste, soodustab kollageeni ja elastiini sünteesi. Parandab naha hapnikuga varustatust ja rakkude ainevahetust. Puhastab, uuendab ja tugevdab nahka.",
-      "price": 85,
-      "categories": ["MinePeel", "Aparaadihooldused"]
-    },
-    {
-      "name": "MinePeel + Wonderm",
-      "description": "Kaks täiendavat professionaalset hooldust: MinePeel mineraliseeritud koorija 7 happe ja mineraalidega stimuleerib kollageeni sünteesi ning uuendab nahka. Wonderm bioaktiivne booster taastab niiskuse ja elastsuse pärast happeprotseduuri.",
-      "price": 150,
-      "categories": ["MinePeel", "Wonderm", "Aparaadihooldused"]
     },
     {
       "name": "Microneedling (Arkana)",
