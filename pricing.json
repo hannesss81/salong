@@ -145,15 +145,27 @@
       "categories": ["MinePeel", "Wonderm", "Aparaadihooldused"]
     },
     {
-      "name": "RF Lifting",
-      "description": "Bi-, tri- ja multipolaarsed raadiolained soojendavad kudesid, seovad kollageeni fibrille ja stimuleerivad fibroblastide migratsiooni ning uue kollageeni sünteesi. Pinguldab nahka ja vähendab kortse. Soovitatav kuurina.",
-      "price": 75,
-      "categories": ["CNC", "Aparaadihooldused"]
-    },
-    {
       "name": "CNC biomimeetilised eksosoomid",
       "description": "Kõrgtehnoloogiline seerum, mis ühendab ülipuhast hüaluroonhapet biomimeetiliste veganeksosoomidega. Pakub intensiivset regeneratsiooni, pinguldust ja vähendab hüperpigmentatsiooni. Tulemuseks siledam ja säravam nahk.",
       "price": 150,
+      "categories": ["CNC", "Aparaadihooldused"]
+    },
+    {
+      "name": "Microneedling (Clinicare)",
+      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
+      "price": 90,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "Microneedling (Arkana)",
+      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
+      "price": 200,
+      "categories": ["Aparaadihooldused"]
+    },
+    {
+      "name": "RF Lifting",
+      "description": "Bi-, tri- ja multipolaarsed raadiolained soojendavad kudesid, seovad kollageeni fibrille ja stimuleerivad fibroblastide migratsiooni ning uue kollageeni sünteesi. Pinguldab nahka ja vähendab kortse. Soovitatav kuurina.",
+      "price": 75,
       "categories": ["CNC", "Aparaadihooldused"]
     },
     {
@@ -163,9 +175,9 @@
       "categories": ["Aparaadihooldused"]
     },
     {
-      "name": "Microneedling (Clinicare)",
-      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
-      "price": 90,
+      "name": "Ultrahelihooldus",
+      "description": "Ultrahelilaine puhastab pindmised kihid ja stimuleerib sügavamaid: parandab vereringet, lümfiringet ja ainevahetust ning aitab aktiivaineid imenduda. Niisutab, pinguldab ja kirgastab. Sobib kuivale, tuhmile, väsinud ja küpsele nahale. Ei sobi põletikulisele/tundlikule nahale.",
+      "price": 60,
       "categories": ["Aparaadihooldused"]
     },
     {
@@ -173,18 +185,6 @@
       "description": "Stimuleerib kollageeni ja elastiini sünteesi, taastab naha niiskuse ja pingulduse ning pakub antioksüdatiivset kaitset.",
       "price": 90,
       "categories": []
-    },
-    {
-      "name": "Microneedling (Arkana)",
-      "description": "Kollageenhooldus: imepeenikeste nõelte mikrotorked stimuleerivad kollageeni, elastiini ja hüaluroonhappe sünteesi ning parandavad mikrotsirkulatsiooni. Kiirendab rakkude uuenemist, pinguldab ja ühtlustab jumet.",
-      "price": 200,
-      "categories": ["Aparaadihooldused"]
-    },
-    {
-      "name": "Ultrahelihooldus",
-      "description": "Ultrahelilaine puhastab pindmised kihid ja stimuleerib sügavamaid: parandab vereringet, lümfiringet ja ainevahetust ning aitab aktiivaineid imenduda. Niisutab, pinguldab ja kirgastab. Sobib kuivale, tuhmile, väsinud ja küpsele nahale. Ei sobi põletikulisele/tundlikule nahale.",
-      "price": 60,
-      "categories": ["Aparaadihooldused"]
     },
     {
       "name": "Ripsmete keemiline värvimine",
