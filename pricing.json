@@ -31,6 +31,13 @@
       "categories": ["Baashooldused"]
     },
     {
+      "name": "Vormiv-bukaalne näomassaaž",
+      "description": "Prantsuse biokeemiku ja kosmetoloogi Joëlle Ciocco väljatöötatud unikaalse tehnikaga massaaž, mille käigus töötatakse näo- ja miimikalihaseid nii välispidiselt kui ka suu kaudu seestpoolt. See võimaldab jõuda sügavamal paiknevate lihasteni, kuhu tavapärase näomassaažiga ei ulatu – tulemuseks selgemad näokontuurid, vähenenud lihaspinged ja parem vereringe. Sobib eriti hästi näokontuuride modelleerimiseks, naha toonuse ja elastsuse taastamiseks, tursete leevendamiseks, nasolabiaalkortsude silumiseks ning näoilme taastamiseks pärast insulti või närvipõletikku (arsti ettekirjutusel).",
+      "price": 75,
+      "new": true,
+      "categories": ["Baashooldused"]
+    },
+    {
       "name": "Sothys HYDRA 4Ha niisutav intensiivhooldus",
       "description": "Intensiivne ja efektiivne erihooldus, mis tagab kõikide nahatüüpide niisutuse vajadusele. Eriti sobilik nahale, millel puudub heaolutunne, samuti nn. \"ülehooldatud\"/valesti hooldatud näonaha puhul. Sisaldab 4 erineva hüaluroonhappe kombinatsiooni ja 2 Sothys patenteeritud aktiivkomponenti.",
       "price": 95,
@@ -136,12 +143,14 @@
       "name": "MinePeel keemiline koorimine",
       "description": "Mineraliseeritud nahakoorija 7 erineva happe ja looduslike mineraalidega. Stimuleerib fibroplaste, soodustab kollageeni ja elastiini sünteesi. Parandab naha hapnikuga varustatust ja rakkude ainevahetust. Puhastab, uuendab ja tugevdab nahka.",
       "price": 85,
+      "new": true,
       "categories": ["MinePeel"]
     },
     {
       "name": "MinePeel + Wonderm",
       "description": "Kaks täiendavat professionaalset hooldust: MinePeel mineraliseeritud koorija 7 happe ja mineraalidega stimuleerib kollageeni sünteesi ning uuendab nahka. Wonderm bioaktiivne booster taastab niiskuse ja elastsuse pärast happeprotseduuri.",
       "price": 150,
+      "new": true,
       "categories": ["MinePeel", "Wonderm", "Aparaadihooldused"]
     },
     {
@@ -166,6 +175,7 @@
       "name": "RF Lifting",
       "description": "Bi-, tri- ja multipolaarsed raadiolained soojendavad kudesid, seovad kollageeni fibrille ja stimuleerivad fibroblastide migratsiooni ning uue kollageeni sünteesi. Pinguldab nahka ja vähendab kortse. Soovitatav kuurina.",
       "price": 75,
+      "new": true,
       "categories": ["CNC", "Aparaadihooldused"]
     },
     {

@@ -68,7 +68,10 @@ function serviceCard(service){
   const hasDesc = service.description && service.description.length > 0;
   const isLongDesc = hasDesc && service.description.length > 80;
 
+  if (service.new) card.classList.add('service-card--new');
+
   card.innerHTML = `
+    ${service.new ? '<span class="badge-new">Uus</span>' : ''}
     <div class="service-top">
       <h3>${service.name}</h3>
       <span class="price">${formatPrice(service.price)}</span>
