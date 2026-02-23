@@ -1,7 +1,7 @@
 // Service Worker placeholder for Studio Salon
 // Basic cache strategy: cache-first for static assets, network-first for pricing.json
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `static-${VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${VERSION}`;
 const STATIC_ASSETS = [
