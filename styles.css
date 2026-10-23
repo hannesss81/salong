@@ -852,9 +852,9 @@ h1, h2, h3, h4 { line-height: 1.2; }
 /* WhatsApp link styling */
 .cta.outline.whatsapp {
   border-color: #25d366;
-  color: #25d366;
+  color: #0e7c43; /* darker WhatsApp green: 5.3:1 contrast on white (#25d366 text was 2:1) */
 }
 .cta.outline.whatsapp:hover {
-  background: #25d366;
+  background: #0e7c43;
   color: #fff;
 }

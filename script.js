@@ -100,34 +100,6 @@ function serviceCard(service){
 
 function formatPrice(v){ return new Intl.NumberFormat('et-EE',{ style:'currency', currency:'EUR', minimumFractionDigits:0 }).format(v); }
 
-function injectStructuredData(){
-  const data = {
-    '@context':'https://schema.org',
-    '@type':'BeautySalon',
-    'name':'Pargi Ilustuudio',
-    'image':'https://www.pargiilustuudio.eu/assets/og-image.jpg',
-    'address':{
-      '@type':'PostalAddress',
-      'streetAddress':'Pargi 10-10',
-      'addressLocality':'Tartu',
-      'postalCode':'49127',
-      'addressCountry':'EE'
-    },
-    'geo': {
-      '@type': 'GeoCoordinates',
-      'latitude': 58.377, // placeholder for Tartu
-      'longitude': 26.729 // placeholder for Tartu
-    },
-    'url':'https://www.pargiilustuudio.eu',
-    'telephone':'+37255697525',
-    'priceRange':'€€',
-    'openingHours':'E-L Kokkuleppel',
-    'servesCuisine':'',
-    'description':'Pargi Ilustuudio Tartus: näohooldused, ripsmed ja kulmud, depilatsioon.'
-  };
-  $('#structured-data').textContent = JSON.stringify(data);
-}
-
 function setYear(){
   const yEl = document.getElementById('year');
   yEl.textContent = new Date().getFullYear();
@@ -194,13 +166,16 @@ function initBooklux() {
 
 window.addEventListener('DOMContentLoaded', () => {
   fetchPricing();
-  injectStructuredData();
   setYear();
   initHeaderScroll();
   initRevealAnimations();
   initBooklux();
 
+  // The site used to install an offline cache (service worker) that could keep showing
+  // outdated pages. Remove it for anyone who still has it; sw.js now deletes itself too.
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    navigator.serviceWorker.getRegistrations()
+      .then(regs => regs.forEach(r => r.unregister()))
+      .catch(() => {});
   }
 });
