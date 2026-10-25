@@ -151,9 +151,13 @@ function initRevealAnimations() {
   reveals.forEach(el => observer.observe(el));
 }
 
-/** Before online booking opens, the booking section points to phone and WhatsApp instead. */
+/**
+ * Before online booking opens, the "Broneeri aeg" buttons scroll to the booking section, which
+ * points to phone and WhatsApp instead of the booking page.
+ */
 function applyBookingState(){
   if (!(window.PARGI_BOOKING && window.PARGI_BOOKING.bookingOpen === false)) return;
+  document.querySelectorAll('a[href="/broneeri/"]').forEach(a => { a.setAttribute('href', '#broneerimine'); });
   const intro = document.querySelector('#broneerimine .intro');
   if (intro) intro.textContent = 'Veebibroneerimine avatakse peagi. Seni broneeri aeg telefoni või WhatsAppi teel.';
   const box = document.querySelector('#broneerimine .booking-cta-box');
@@ -163,7 +167,18 @@ function applyBookingState(){
   }
 }
 
+/** Keeps --header-h equal to the sticky header's height, so jump links don't land under it. */
+function initHeaderOffset(){
+  const header = document.querySelector('.site-header');
+  if (!header) return;
+  const set = () => document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+  set();
+  if ('ResizeObserver' in window) new ResizeObserver(set).observe(header);
+  else window.addEventListener('resize', set);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  initHeaderOffset();
   applyBookingState();
   fetchPricing();
   setYear();
