@@ -505,5 +505,13 @@
     else view('v-login');
   }
 
+  // The login link can also arrive while the page is already open (same address, new #login=).
+  window.addEventListener('hashchange', function () {
+    var hash = location.hash.match(/^#login=(.+)$/);
+    if (!hash) return;
+    history.replaceState(null, '', location.pathname);
+    exchangeLogin(decodeURIComponent(hash[1]));
+  });
+
   start();
 })();

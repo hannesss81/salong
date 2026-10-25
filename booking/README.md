@@ -22,6 +22,8 @@ booking/
     Store.js         calendar access, cancel-link tokens
     Mail.js          Estonian e-mails + .ics attachment
     Slots.js         GENERATED copy of broneeri/slots.js (node booking/dev/sync.js)
+    Services.js      GENERATED bookable services from pricing.json (fallback, same command)
+    .clasp.json      Apps Script project id (not secret)
     appsscript.json  manifest: Calendar advanced service, web app settings, scopes
   dev/
     gas.js           in-memory fakes of the Google services (tests + preview)
@@ -50,7 +52,9 @@ booking/
   asks for a new link.
 - Services, prices and durations come from `/pricing.json` (`id`, `duration`; `bookable: false`
   hides one). The booking page reads it directly; the backend fetches it from the live site
-  (cached 10 min, last good copy kept), so the price list and booking can't disagree.
+  (cached 10 min, last good copy kept), so the price list and booking can't disagree. If the
+  live file can't be read or has no durations, the backend uses `Services.js`, a copy that
+  `sync.js` bundles at deploy time.
 - The page asks the backend once for opening windows and busy times (her events, clipped to
   opening hours so nothing else leaks), then computes start times locally with `slots.js`.
   On "Kinnita" the backend re-checks under a script lock with fresh calendar data.
@@ -90,27 +94,33 @@ admin login link: open `/broneeri/haldus/`, press "Saada link", then follow the 
 When testing in the agent's Edge, bring the tab to the front (`Page.bringToFront`): Edge
 freezes background tabs and their fetches never complete.
 
-## Deploying (first time)
+## Deployment (live since 2026-10-25)
 
-Runs under **ilvi.metssalu@gmail.com**. Needs her Google login once in a browser.
+- Apps Script project "Pargi broneeringud" in **ilvi.metssalu@gmail.com**:
+  https://script.google.com/d/1sBJcBMdOe8lYhElqykk8Aj601rhLf-hIv6Sqi6-L65TlFulSIjx2pqNV/edit
+- Web app deployment id `AKfycbyz0jSK6BdLVYeiOA4iU7WMkG5B9ZWyPacMxijYyxQTdtDPMSQH-Xub5H95OG8gbjMM` (the URL in `broneeri/config.js`). Executes as Ilvi, access
+  Anyone (from `appsscript.json`).
+- clasp's login for her account is in `~/.clasprc.json` on the Hermes host.
 
-1. Logged in as Ilvi, turn on "Google Apps Script API" at
-   https://script.google.com/home/usersettings.
-2. `node booking/dev/sync.js`
-3. `cd booking/apps-script && npx @google/clasp@3.4.1 login` (approve as Ilvi), then
-   `npx @google/clasp@3.4.1 create --type standalone --title "Pargi broneeringud"` and
-   `npx @google/clasp@3.4.1 push -f`. This writes `.clasp.json` (project id, not secret).
-4. Open the project (`clasp open-script`), select `setup` and Run. Google asks for consent:
-   "Google hasn't verified this app" -> Advanced -> Go to Pargi broneeringud -> Allow. The log
-   should say `OK: 47 bookable services, calendar reachable ...`.
-5. Deploy -> New deployment -> type Web app, Execute as: Me, Who has access: Anyone -> Deploy.
-   Copy the URL ending in `/exec`.
-6. Put the URL in `broneeri/config.js` (`apiUrl`), commit, merge to `main`, push.
-7. Test on the live site with a real booking (own e-mail), check the event in her calendar
-   and both e-mails, cancel via the link.
+Updating the backend (same URL):
 
-Updating the backend later: edit, `node booking/dev/sync.js`, `clasp push -f`, then
-Deploy -> Manage deployments -> edit the web app -> Version: New version (keeps the same URL).
+```
+node booking/dev/sync.js && node --test booking/test/
+cd booking/apps-script
+npx @google/clasp@3.4.1 push -f
+npx @google/clasp@3.4.1 create-deployment -i AKfycbyz0jSK6BdLVYeiOA4iU7WMkG5B9ZWyPacMxijYyxQTdtDPMSQH-Xub5H95OG8gbjMM -d "what changed"
+```
+
+If a change adds a permission (new scope in `appsscript.json`), run `setup` once in the editor
+so Ilvi's account approves it, before redeploying. The pages (`broneeri/`) deploy with the site.
+
+First-time setup, for reference: Apps Script API on at script.google.com/home/usersettings;
+`clasp login` (Google asks Ilvi to confirm on her phone); `clasp create-script --type standalone
+--title "Pargi broneeringud"` (it overwrites `appsscript.json` with a default: restore ours);
+`clasp push -f`; run `setup` in the editor and approve ("Google hasn't verified this app" ->
+Advanced -> Go to Pargi broneeringud -> Select all -> Continue); `clasp create-deployment`.
+The setup log said `OK: 47 bookable services (from bundled copy), calendar reachable ...,
+hourly trigger created, e-mail quota left today: 100.`
 
 ## Settings (Config.js)
 

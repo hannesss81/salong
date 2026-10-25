@@ -5,34 +5,51 @@
 
 // ---------- services ----------
 
-/** Bookable services by id: { id: {id, name, duration, price} }. */
+var SERVICES_SOURCE_ = '';
+
+/**
+ * Bookable services by id: { id: {id, name, duration, price} }. The live pricing.json wins;
+ * otherwise the last good live copy, then the copy bundled at deploy time (Services.js).
+ * Only live data is cached, so a fixed site is picked up on the next request.
+ */
 function services_() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('services:v1');
-  if (cached) return JSON.parse(cached);
+  if (cached) {
+    SERVICES_SOURCE_ = 'site (cached)';
+    return JSON.parse(cached);
+  }
   var props = PropertiesService.getScriptProperties();
-  var map = null;
   try {
     var res = UrlFetchApp.fetch(CONFIG.SITE_URL + CONFIG.PRICING_PATH, { muteHttpExceptions: true });
     if (res.getResponseCode() === 200) {
-      map = {};
+      var live = {};
       JSON.parse(res.getContentText()).services.forEach(function (s) {
         if (s.id && s.duration > 0 && s.bookable !== false) {
-          map[s.id] = { id: s.id, name: s.name, duration: s.duration, price: s.price };
+          live[s.id] = { id: s.id, name: s.name, duration: s.duration, price: s.price };
         }
       });
-      try {
-        props.setProperty('SERVICES_BACKUP', JSON.stringify(map)); // last good copy, about 5 KB of 9 KB
-      } catch (err) {
-        console.error('services backup not saved: ' + err);
+      if (Object.keys(live).length) {
+        try {
+          props.setProperty('SERVICES_BACKUP', JSON.stringify(live)); // about 5 KB of 9 KB
+        } catch (err) {
+          console.error('services backup not saved: ' + err);
+        }
+        cache.put('services:v1', JSON.stringify(live), 600);
+        SERVICES_SOURCE_ = 'site';
+        return live;
       }
     }
   } catch (err) {
     console.error('pricing.json fetch failed: ' + err);
   }
-  if (!map) map = JSON.parse(props.getProperty('SERVICES_BACKUP') || '{}');
-  if (Object.keys(map).length) cache.put('services:v1', JSON.stringify(map), 600); // never cache "none"
-  return map;
+  var backup = JSON.parse(props.getProperty('SERVICES_BACKUP') || '{}');
+  if (Object.keys(backup).length) {
+    SERVICES_SOURCE_ = 'last site copy';
+    return backup;
+  }
+  SERVICES_SOURCE_ = 'bundled copy';
+  return typeof BUNDLED_SERVICES !== 'undefined' ? BUNDLED_SERVICES : {};
 }
 
 // ---------- input checks ----------
@@ -324,9 +341,10 @@ function setup() {
     if (fn === 'hourly') has = true;
   });
   if (!has) ScriptApp.newTrigger('hourly').timeBased().everyHours(1).create();
+  CacheService.getScriptCache().remove('services:v1');
   var n = Object.keys(services_()).length;
   var probe = Calendar.Events.list(CONFIG.CALENDAR_ID, { maxResults: 1, timeMin: new Date().toISOString() });
-  var msg = 'OK: ' + n + ' bookable services, calendar reachable (' + ((probe.items || []).length) +
+  var msg = 'OK: ' + n + ' bookable services (from ' + SERVICES_SOURCE_ + '), calendar reachable (' + ((probe.items || []).length) +
     ' upcoming event sampled), hourly trigger ' + (has ? 'already present' : 'created') +
     ', e-mail quota left today: ' + MailApp.getRemainingDailyQuota() + '.';
   console.log(msg);

@@ -377,13 +377,22 @@ test('names must look like names; e-mail addresses must be plain', () => {
   assert.equal(book(gas, L('2026-11-03', '12:00'), { name: 'Ольга Иванова', email: 'olga@example.com', phone: '5000 0009' }).ok, true);
 });
 
-test('a failed first price-list fetch is not cached as "no services"', () => {
+test('price list: the live site wins; the bundled copy covers an old site or an outage', () => {
   const gas = setup();
-  const realFetch = gas.ctx.UrlFetchApp.fetch;
+  const serve = body => { gas.ctx.UrlFetchApp.fetch = () => ({ getResponseCode: () => 200, getContentText: () => JSON.stringify(body) }); };
+  const mask = (start, i) => gas.post({ action: 'book', serviceId: 'mask', startMs: start, name: 'Mari Maasikas',
+    phone: '5000 00' + (10 + i), email: 'm' + i + '@example.com' });
+  serve({ services: [{ name: 'Mask', price: 40 }] }); // the live site before booking launched: no ids, no durations
+  const a = mask(L('2026-11-03', '10:00'), 1);
+  assert.equal(a.ok, true, 'bundled copy used');
+  assert.equal(a.booking.price, 40);
   gas.ctx.UrlFetchApp.fetch = () => { throw new Error('DNS failure'); };
-  assert.equal(book(gas, L('2026-11-03', '10:00')).error, 'invalid_service');
-  gas.ctx.UrlFetchApp.fetch = realFetch;
-  assert.equal(book(gas, L('2026-11-03', '10:00')).ok, true);
+  assert.equal(mask(L('2026-11-03', '12:00'), 2).ok, true, 'outage: bundled copy');
+  serve({ services: [{ id: 'mask', name: 'Mask', price: 45, duration: 30 }] });
+  assert.equal(mask(L('2026-11-03', '14:00'), 3).booking.price, 45, 'fallbacks are not cached; live data wins at once');
+  gas.ctx.UrlFetchApp.fetch = () => { throw new Error('DNS failure'); };
+  gas.ctx.CacheService.getScriptCache().remove('services:v1');
+  assert.equal(mask(L('2026-11-03', '16:00'), 4).booking.price, 45, 'outage after a good fetch: last live copy');
 });
 
 test('the e-mailed calendar file is declared as UTF-8', () => {
