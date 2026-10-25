@@ -71,9 +71,17 @@ function eventEndMs_(ev) {
 function secret_() {
   var props = PropertiesService.getScriptProperties();
   var s = props.getProperty('HMAC_SECRET');
-  if (!s) {
-    s = Utilities.getUuid() + Utilities.getUuid();
-    props.setProperty('HMAC_SECRET', s);
+  if (s) return s;
+  var lock = LockService.getScriptLock(); // two first-ever requests must not create two secrets
+  lock.waitLock(20000);
+  try {
+    s = props.getProperty('HMAC_SECRET');
+    if (!s) {
+      s = Utilities.getUuid() + Utilities.getUuid();
+      props.setProperty('HMAC_SECRET', s);
+    }
+  } finally {
+    lock.releaseLock();
   }
   return s;
 }

@@ -110,13 +110,17 @@ function createGas(options) {
     console: options.quiet ? { log: m => log.push(m), error: m => log.push(m), warn: m => log.push(m), info: m => log.push(m) } : console,
     Calendar: calendar.api,
     MailApp: {
+      failNext: 0, // tests: number of upcoming sends that throw
+      quota: 100,
       sendEmail(msg) {
         if (typeof msg !== 'object') throw new Error('fake MailApp only supports the object form');
+        if (this.failNext > 0) { this.failNext--; throw new Error('Service invoked too many times for one day: email.'); }
+        if (this.getRemainingDailyQuota() <= 0) throw new Error('Service invoked too many times for one day: email.');
         outbox.push(Object.assign({ sentAt: Date.now() }, msg, {
           attachments: (msg.attachments || []).map(b => ({ name: b.getName(), type: b.getContentType(), data: b.getDataAsString() })),
         }));
       },
-      getRemainingDailyQuota() { return 100 - outbox.length; },
+      getRemainingDailyQuota() { return this.quota - outbox.length; },
     },
     LockService: {
       getScriptLock() {
@@ -127,7 +131,11 @@ function createGas(options) {
       getScriptCache() {
         return {
           get(k) { const e = cache.get(k); return e && e.exp > Date.now() ? e.v : null; },
-          put(k, v, ttl) { cache.set(k, { v: String(v), exp: Date.now() + (ttl || 600) * 1000 }); },
+          put(k, v, ttl) {
+            // Documented limit: 1..21600 s (6 h); the real service rejects longer expirations.
+            if (ttl != null && (ttl < 1 || ttl > 21600)) throw new Error('Argument too large: expirationInSeconds');
+            cache.set(k, { v: String(v), exp: Date.now() + (ttl || 600) * 1000 });
+          },
           remove(k) { cache.delete(k); },
         };
       },

@@ -35,18 +35,26 @@ booking/
   opening hours so nothing else leaks), then computes start times locally with `slots.js`.
   On "Kinnita" the backend re-checks under a script lock with fresh calendar data.
 - Start times sit on a 15-min grid. Every event in her calendar gets 15 min of free time
-  before and after it. All-day events close the day. Events marked "Vaba" (free) and
-  declined invitations don't block. Estonian public holidays are closed.
+  before and after it. All-day events she adds close the day (even though Google marks them
+  "Free" by default); contacts' birthdays and working-location entries don't. Timed events
+  marked "Vaba" (free) and declined invitations don't block. Estonian public holidays are
+  closed. Busy times sent to the page are rounded out to the quarter hour.
 - Each booking is an event (title `Name · Service`, colour Sage) with contact details in the
-  description and private extended properties (`pargi=1`, email, phone, createdMs,
-  reminderSent).
-- Cancel links carry an HMAC of the event id (secret in Script Properties). Online
-  cancellation closes 24 h before; after that the page says to call.
-- An hourly trigger sends reminders 24 h ahead (skipped when the booking was made less than
-  36 h before the visit, since the confirmation is fresh).
-- Limits: 3 upcoming bookings per e-mail/phone, 25 bookings per day in total, honeypot
-  field. Gmail allows 100 recipients a day on a personal account (2 per booking, 1 per
-  reminder).
+  description and private extended properties (`pargi=1`, email, phone, createdMs, rid,
+  reminderFor).
+- Cancel links carry an HMAC of the event id (secret in Script Properties). The token is only
+  ever sent by e-mail, never in an API response. Online cancellation closes 24 h before;
+  after that the page says to call.
+- An hourly trigger sends reminders 48 h ahead, while online cancellation is still open
+  (skipped when the booking was made less than 60 h before the visit). If Ilvi moves a
+  booking, the reminder follows the new time. A reminder is claimed before sending and
+  released if Gmail fails, so it is retried but never sent twice.
+- Each booking request carries a `requestId`; a retry after a lost reply returns the first
+  booking instead of making a second one.
+- Limits: 3 upcoming bookings per e-mail/phone, 12 bookings per day in total (counter in
+  Script Properties), names must be letters, honeypot field (answers like a success).
+  Gmail allows 100 recipients a day on a personal account (2 per booking, 1 per reminder);
+  booking pauses when fewer than 10 are left.
 
 ## Local preview and tests
 
@@ -100,6 +108,12 @@ Deploy -> Manage deployments -> edit the web app -> Version: New version (keeps 
   kalendris. Klient automaatset kirja selle kohta ei saa.
 
 ## Known gaps / next
+
+- Bot protection is a honeypot plus the limits above. If spam bookings ever appear, add
+  Cloudflare Turnstile (free): verify its token in `createBooking_` with UrlFetchApp.
+- To verify on real Google at deploy time (the fakes can't prove these): `.ics` attachment
+  charset in Outlook, `Events.list` with `privateExtendedProperty=rid=...` finding an event
+  inserted seconds earlier, birthday events in her calendar being skipped.
 
 - When Ilvi moves or deletes a booking herself, the customer is not e-mailed (the reminder
   does use the new time). Possible next step: detect moves in the hourly trigger.

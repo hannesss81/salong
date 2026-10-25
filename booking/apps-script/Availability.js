@@ -38,7 +38,11 @@ function windowsFor_(fromDate, days) {
 /** Busy interval of one calendar event, or null when it does not block time. */
 function eventBusy_(ev) {
   if (!ev || ev.status === 'cancelled') return null;
+  // Contacts' birthdays and working-location markers are informational, never busy time.
+  if (ev.eventType === 'birthday' || ev.eventType === 'workingLocation') return null;
   if (ev.start && ev.start.date) {
+    // An all-day event she adds herself ("Puhkus") closes the day even though Google Calendar
+    // creates all-day events as "Free" by default.
     if (!CONFIG.ALL_DAY_EVENTS_BLOCK) return null;
     return [PargiSlots.localToUtc(ev.start.date, '00:00'), PargiSlots.localToUtc(ev.end.date, '00:00')];
   }
@@ -61,14 +65,19 @@ function busyIntervals_(fromMs, toMs) {
 
 /**
  * Keeps only the parts of busy intervals that can affect a booking (opening hours plus the
- * buffer), so the public response does not reveal the rest of her calendar.
+ * buffer), rounded out to the slot grid, so the public response reveals as little of her
+ * calendar as possible. Rounding cannot change the offered slots: starts and the buffer are
+ * whole multiples of the step.
  */
 function clipBusy_(busy, windows, bufferMs) {
+  var step = CONFIG.STEP_MIN * MINUTE_MS;
   var out = [];
   busy.forEach(function (b) {
+    var bs = Math.floor(b[0] / step) * step;
+    var be = Math.ceil(b[1] / step) * step;
     windows.forEach(function (w) {
-      var s = Math.max(b[0], w[0] - bufferMs);
-      var e = Math.min(b[1], w[1] + bufferMs);
+      var s = Math.max(bs, w[0] - bufferMs);
+      var e = Math.min(be, w[1] + bufferMs);
       if (s < e) out.push([s, e]);
     });
   });

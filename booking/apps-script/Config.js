@@ -36,10 +36,11 @@ var CONFIG = {
   MIN_NOTICE_MIN: 180,             // earliest booking: 3 h from now
   HORIZON_DAYS: 60,                // how far ahead customers can book
   CANCEL_DEADLINE_HOURS: 24,       // online cancellation allowed until this many hours before
-  REMINDER_HOURS_BEFORE: 24,
-  REMINDER_MIN_LEAD_HOURS: 36,     // bookings made closer than this to the visit get no reminder
+  REMINDER_HOURS_BEFORE: 48,       // reminder two days ahead, while online cancellation is still open
+  REMINDER_MIN_LEAD_HOURS: 60,     // bookings made closer than this to the visit get no reminder
   MAX_UPCOMING_PER_CONTACT: 3,
-  MAX_BOOKINGS_PER_DAY: 25,        // safety valve against floods (Gmail allows 100 recipients a day)
+  MAX_BOOKINGS_PER_DAY: 12,        // safety valve against floods; more than one person can serve
+  MAIL_QUOTA_RESERVE: 10,          // stop taking bookings when fewer Gmail recipients are left today
   EVENT_COLOR_ID: '2',             // Google Calendar colour of online bookings (2 = Sage)
   NOTIFY_OWNER: true,
   AVAILABILITY_CACHE_SECONDS: 60,

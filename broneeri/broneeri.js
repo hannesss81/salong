@@ -27,7 +27,15 @@
     startMs: null,
     month: null, // 'YYYY-MM'
     booking: null,
+    requestId: null,     // one per chosen time; retries reuse it so the server never books twice
+    pendingStatus: null, // message to show after a history.back()
   };
+  var AVAILABILITY_MAX_AGE_MS = 2 * 60 * 1000;
+
+  function newRequestId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+  }
 
   // ---------- helpers ----------
 
@@ -77,7 +85,7 @@
 
   function api(method, params) {
     var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 30000);
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 60000);
     var req = method === 'GET'
       ? fetch(API + (API.indexOf('?') === -1 ? '?' : '&') + new URLSearchParams(params).toString(), { signal: ctrl && ctrl.signal })
       : fetch(API, {
@@ -122,9 +130,10 @@
     }
     if (panel !== 'step-1' && !state.service) panel = 'step-1';
     if (panel === 'step-3' && !state.startMs) panel = 'step-2';
-    status('');
-    if (panel === 'step-2') renderStep2();
-    show(panel, null);
+    status(state.pendingStatus || '', 'warn');
+    state.pendingStatus = null;
+    if (panel === 'step-2') { refreshIfStale(); renderStep2(); }
+    show(panel, false);
   });
 
   // ---------- data ----------
@@ -144,6 +153,15 @@
       return av;
     });
     return state.availabilityPromise;
+  }
+
+  /** Drops availability older than two minutes so the page never offers long-gone times. */
+  function refreshIfStale() {
+    var av = state.availability;
+    if (av && Date.now() - av.receivedAt > AVAILABILITY_MAX_AGE_MS) {
+      state.availability = null;
+      loadAvailability().catch(function () {});
+    }
   }
 
   function slotsForService(service) {
@@ -207,6 +225,7 @@
     state.startMs = null;
     state.month = null;
     status('');
+    refreshIfStale();
     renderStep2();
     show('step-2', push);
   }
@@ -221,7 +240,7 @@
       el('strong', { text: s.name }),
       el('span', { class: 'bk-service-meta', text: duration(s.duration) + ' · ' + price(s.price) }),
     ]));
-    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda teenust', onclick: function () { show('step-1', true); } }));
+    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda teenust', onclick: function () { history.back(); } }));
   }
 
   function renderStep2() {
@@ -270,13 +289,13 @@
     $('cal-next').disabled = ym >= lastDay.slice(0, 7);
     var grid = $('cal-grid');
     grid.innerHTML = '';
-    var head = el('div', { class: 'bk-cal-row bk-cal-wd', role: 'row' });
-    WD_SHORT.forEach(function (w) { head.appendChild(el('span', { role: 'columnheader', text: w })); });
+    var head = el('div', { class: 'bk-cal-row bk-cal-wd', 'aria-hidden': 'true' });
+    WD_SHORT.forEach(function (w) { head.appendChild(el('span', { text: w })); });
     grid.appendChild(head);
     var first = ym + '-01';
     var lead = S.localParts(S.localToUtc(first, '12:00')).isoDow - 1;
-    var row = el('div', { class: 'bk-cal-row', role: 'row' });
-    for (var i = 0; i < lead; i++) row.appendChild(el('span', { class: 'bk-day is-blank', role: 'gridcell' }));
+    var row = el('div', { class: 'bk-cal-row' });
+    for (var i = 0; i < lead; i++) row.appendChild(el('span', { class: 'bk-day is-blank', 'aria-hidden': 'true' }));
     for (var d = first; d.slice(0, 7) === ym; d = S.addDays(d, 1)) {
       var n = (state.byDay[d] || []).length;
       var label = dayLabel(d) + (n ? ', ' + n + ' vaba aega' : ', vabu aegu pole');
@@ -285,9 +304,9 @@
         ? el('button', { type: 'button', class: cls, 'aria-label': label, 'aria-pressed': d === state.date ? 'true' : 'false',
           onclick: (function (day) { return function () { state.date = day; renderCalendar(); renderTimes(true); }; })(d) },
           [String(Number(d.slice(8)))])
-        : el('span', { class: cls, 'aria-label': label }, [String(Number(d.slice(8)))]);
-      row.appendChild(el('span', { role: 'gridcell', class: 'bk-cell' }, [cell]));
-      if (row.children.length === 7) { grid.appendChild(row); row = el('div', { class: 'bk-cal-row', role: 'row' }); }
+        : el('span', { class: cls, 'aria-hidden': 'true' }, [String(Number(d.slice(8)))]);
+      row.appendChild(el('span', { class: 'bk-cell' }, [cell]));
+      if (row.children.length === 7) { grid.appendChild(row); row = el('div', { class: 'bk-cal-row' }); }
     }
     if (row.children.length) grid.appendChild(row);
   }
@@ -312,6 +331,7 @@
 
   function chooseTime(ms) {
     state.startMs = ms;
+    state.requestId = newRequestId();
     status('');
     renderSummary();
     show('step-3', true);
@@ -331,7 +351,7 @@
       el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(ms).date) + ' kell ' + timeOf(ms) + '–' + timeOf(ms + s.duration * 60000) }),
       el('dt', { text: 'Hind' }), el('dd', { text: price(s.price) + ' (tasumine kohapeal)' }),
     ]));
-    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda aega', onclick: function () { show('step-2', true); } }));
+    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda aega', onclick: function () { history.back(); } }));
   }
 
   var EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/;
@@ -373,16 +393,19 @@
       email: form.email.value.trim(),
       comment: form.comment.value,
       website: form.website.value,
+      requestId: state.requestId,
     }).then(function (r) {
       if (r.ok) return done(r.booking, form.email.value.trim());
       if (r.error === 'slot_taken') {
-        status('Kahjuks broneeriti see aeg just ära. Palun vali uus aeg.', 'warn');
         state.startMs = null;
         state.availability = null;
         loadAvailability().catch(function () {});
-        renderStep2();
-        show('step-2', true);
+        state.pendingStatus = 'Kahjuks broneeriti see aeg just ära. Palun vali uus aeg.';
+        history.back(); // back to the time list, without stacking history entries
         return;
+      }
+      if (r.error === 'unavailable' || r.error === 'daily_limit') {
+        return status('Veebibroneerimine on täna ajutiselt suletud. Palun helista ' + PHONE + ' või kirjuta WhatsAppis.', 'warn');
       }
       if (r.error === 'invalid' && r.fields) {
         r.fields.forEach(function (k) { fieldError(k, k === 'phone' ? 'Palun kontrolli telefoninumbrit.' : k === 'email' ? 'Palun kontrolli e-posti aadressi.' : 'Palun kirjuta oma nimi.'); });
@@ -391,7 +414,7 @@
       if (r.error === 'too_many') return status('Sul on juba mitu tulevast broneeringut. Uue aja jaoks palun helista ' + PHONE + '.', 'warn');
       status('Broneerimine ei õnnestunud. Palun proovi uuesti või helista ' + PHONE + '.', 'error');
     }).catch(function () {
-      status('Ühendus katkes ja broneering ei pruukinud jõuda kohale. Palun kontrolli e-posti või helista ' + PHONE + '.', 'error');
+      status('Ühendus katkes. Palun vajuta uuesti „Kinnita broneering“: kui aeg jõudis juba kinni panna, topelt broneeringut ei teki.', 'error');
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = 'Kinnita broneering';
@@ -409,8 +432,13 @@
       el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(b.startMs).date) + ' kell ' + timeOf(b.startMs) + '–' + timeOf(b.startMs + b.durationMin * 60000) }),
       el('dt', { text: 'Aadress' }), el('dd', {}, ['Pargi 10-10, Tartu', el('br'), 'Välisuksel vali number 10']),
     ]));
-    body.appendChild(el('p', {}, ['Kinnitus on teel aadressile ', el('strong', { text: email }), '. Kui kirja mõne minuti jooksul pole, vaata ka rämpsposti kausta.']));
-    body.appendChild(el('p', { text: 'Tühistada saad kirjas oleva lingi kaudu kuni 24 tundi enne.' }));
+    if (b.mailed === false) {
+      body.appendChild(el('p', {}, ['Sinu aeg on kirjas, kuid kinnituskirja saatmine ebaõnnestus. Tühistamiseks või küsimustega helista ',
+        el('a', { href: 'tel:+37255697525', text: PHONE }), '.']));
+    } else {
+      body.appendChild(el('p', {}, ['Kinnitus on teel aadressile ', el('strong', { text: email }), '. Kui kirja mõne minuti jooksul pole, vaata ka rämpsposti kausta.']));
+      body.appendChild(el('p', { text: 'Tühistada saad kirjas oleva lingi kaudu kuni 24 tundi enne.' }));
+    }
     document.getElementById('details-form').reset();
     show('step-done', true);
   }
@@ -490,7 +518,12 @@
   function init() {
     var params = new URLSearchParams(location.search);
     if (!API) { show('offline', false); return; }
-    if (params.get('tuhista')) { startCancel(params.get('tuhista'), params.get('t') || ''); return; }
+    if (params.get('tuhista')) {
+      var id = params.get('tuhista'), token = params.get('t') || '';
+      history.replaceState({ panel: 'cancel' }, '', location.pathname); // keep the token out of history
+      startCancel(id, token);
+      return;
+    }
     history.replaceState({ panel: 'step-1' }, '');
     show('step-1', null);
     loadAvailability().catch(function () {});

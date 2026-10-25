@@ -21,13 +21,17 @@ function services_() {
           map[s.id] = { id: s.id, name: s.name, duration: s.duration, price: s.price };
         }
       });
-      props.setProperty('SERVICES_BACKUP', JSON.stringify(map)); // last good copy, about 4 KB
+      try {
+        props.setProperty('SERVICES_BACKUP', JSON.stringify(map)); // last good copy, about 5 KB of 9 KB
+      } catch (err) {
+        console.error('services backup not saved: ' + err);
+      }
     }
   } catch (err) {
     console.error('pricing.json fetch failed: ' + err);
   }
   if (!map) map = JSON.parse(props.getProperty('SERVICES_BACKUP') || '{}');
-  cache.put('services:v1', JSON.stringify(map), 600);
+  if (Object.keys(map).length) cache.put('services:v1', JSON.stringify(map), 600); // never cache "none"
   return map;
 }
 
@@ -48,8 +52,11 @@ function normalizePhone_(raw) {
 }
 
 function validEmail_(s) {
-  return s.length <= 254 && /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/.test(s);
+  return s.length <= 254 && /^[A-Za-z0-9._+'-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(s);
 }
+
+/** Letters (Latin incl. õäöüšž, Cyrillic), spaces, hyphens, apostrophes and dots only. */
+var NAME_RE_ = /^[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F\u0400-\u04FF][A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F\u0400-\u04FF .'\u2019-]*$/;
 
 function checkCustomer_(body) {
   var c = {
@@ -60,7 +67,7 @@ function checkCustomer_(body) {
   };
   c.phone = normalizePhone_(c.phoneRaw);
   var bad = [];
-  if (c.name.length < 2) bad.push('name');
+  if (c.name.length < 2 || !NAME_RE_.test(c.name)) bad.push('name');
   if (!c.phone) bad.push('phone');
   if (!validEmail_(c.email)) bad.push('email');
   return { customer: c, bad: bad };
@@ -69,20 +76,35 @@ function checkCustomer_(body) {
 // ---------- create ----------
 
 function createBooking_(body) {
-  if (body.website) return { ok: false, error: 'invalid' }; // honeypot field humans never see
   var service = services_()[String(body.serviceId || '')];
   if (!service) return { ok: false, error: 'invalid_service' };
+  var startMs = Number(body.startMs);
+  if (body.website) { // honeypot field humans never see: answer like a success, do nothing
+    return { ok: true, booking: { id: 'x', serviceId: service.id, serviceName: service.name, price: service.price,
+      startMs: startMs, durationMin: service.duration, firstName: '', mailed: true } };
+  }
   var checked = checkCustomer_(body);
   if (checked.bad.length) return { ok: false, error: 'invalid', fields: checked.bad };
   var c = checked.customer;
-  var startMs = Number(body.startMs);
   if (!isFinite(startMs) || Math.floor(startMs) !== startMs) return { ok: false, error: 'slot_taken' };
+  var requestId = /^[A-Za-z0-9-]{8,64}$/.test(String(body.requestId || '')) ? String(body.requestId) : '';
+  // Each booking costs two recipients now and one reminder later; keep a reserve for those.
+  if (MailApp.getRemainingDailyQuota() < CONFIG.MAIL_QUOTA_RESERVE) return { ok: false, error: 'unavailable' };
 
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   var ev;
   try {
     var h = horizon_();
+    if (requestId) { // a retry of a request that already succeeded (e.g. after a timeout)
+      var same = listEvents_(CONFIG.CALENDAR_ID, h.now - DAY_MS, h.toMs, { privateExtendedProperty: 'rid=' + requestId })
+        .filter(function (e) { return privateProps_(e).pargi === '1' && e.status !== 'cancelled'; })[0];
+      if (same) {
+        var again = bookingSummary_(same);
+        again.mailed = true;
+        return { ok: true, booking: again };
+      }
+    }
     if (startMs < h.now || startMs >= h.toMs) return { ok: false, error: 'slot_taken' };
 
     var upcoming = listBookings_(h.now, h.toMs).filter(function (b) {
@@ -101,26 +123,32 @@ function createBooking_(body) {
     }, startMs);
     if (!free) return { ok: false, error: 'slot_taken' };
 
-    var cache = CacheService.getScriptCache();
-    var dayKey = 'count:' + PargiSlots.localParts(h.now).date;
-    var count = Number(cache.get(dayKey) || 0);
+    var today = PargiSlots.localParts(h.now).date;
+    var props = PropertiesService.getScriptProperties();
+    var counter = JSON.parse(props.getProperty('DAILY_COUNT') || '{}');
+    var count = counter.date === today ? Number(counter.n) || 0 : 0;
     if (count >= CONFIG.MAX_BOOKINGS_PER_DAY) return { ok: false, error: 'daily_limit' };
 
-    ev = Calendar.Events.insert(bookingEvent_(service, startMs, c, h.now), CONFIG.CALENDAR_ID);
-    cache.put(dayKey, String(count + 1), 26 * 3600);
-    invalidateAvailability_();
+    ev = Calendar.Events.insert(bookingEvent_(service, startMs, c, h.now, requestId), CONFIG.CALENDAR_ID);
+    // The booking exists from here on: nothing below may turn it into an error for the customer.
+    try {
+      props.setProperty('DAILY_COUNT', JSON.stringify({ date: today, n: count + 1 }));
+      invalidateAvailability_();
+    } catch (err) {
+      console.error('post-insert bookkeeping failed: ' + err);
+    }
   } finally {
     lock.releaseLock();
   }
 
   var booking = bookingSummary_(ev);
-  booking.token = token_(ev.id);
-  sendSafely_(function () { mailConfirmation_(booking, c); });
-  if (CONFIG.NOTIFY_OWNER) sendSafely_(function () { mailOwnerNew_(booking, c); });
-  return { ok: true, booking: booking };
+  var withToken = Object.assign({ token: token_(ev.id) }, booking);
+  booking.mailed = sendSafely_(function () { mailConfirmation_(withToken, c); });
+  if (CONFIG.NOTIFY_OWNER) sendSafely_(function () { mailOwnerNew_(withToken, c); });
+  return { ok: true, booking: booking }; // the cancel token travels only by e-mail
 }
 
-function bookingEvent_(service, startMs, c, createdMs) {
+function bookingEvent_(service, startMs, c, createdMs, requestId) {
   var endMs = startMs + service.duration * MINUTE_MS;
   var lines = [
     'Teenus: ' + service.name + ' (' + service.duration + ' min, ' + service.price + ' €)',
@@ -148,7 +176,8 @@ function bookingEvent_(service, startMs, c, createdMs) {
         phone: c.phone,
         email: c.email,
         createdMs: String(createdMs),
-        reminderSent: '0',
+        rid: requestId || '',
+        reminderFor: '', // start time (ms) the last reminder was sent for
       },
     },
   };
@@ -208,20 +237,31 @@ function cancelBooking_(id, t) {
 function sendReminders() {
   var now = nowMs();
   listBookings_(now, now + CONFIG.REMINDER_HOURS_BEFORE * HOUR_MS).forEach(function (ev) {
-    var p = privateProps_(ev);
-    if (p.reminderSent && p.reminderSent !== '0') return;
-    var startMs = eventStartMs_(ev);
-    if (startMs <= now || !p.email) return;
-    if (startMs - Number(p.createdMs || 0) < CONFIG.REMINDER_MIN_LEAD_HOURS * HOUR_MS) {
-      setPrivateProps_(ev, { reminderSent: 'skip' }); // confirmation e-mail was recent enough
-      return;
+    try {
+      remindOne_(ev, now);
+    } catch (err) {
+      console.error('reminder for ' + ev.id + ' failed: ' + ((err && err.stack) || err));
     }
-    var booking = bookingSummary_(ev);
-    booking.token = token_(ev.id);
-    booking.cancellable = now < booking.cancelDeadlineMs;
-    var ok = sendSafely_(function () { mailReminder_(booking, { name: p.name, email: p.email }); });
-    if (ok) setPrivateProps_(ev, { reminderSent: '1' });
   });
+}
+
+function remindOne_(ev, now) {
+  var p = privateProps_(ev);
+  var startMs = eventStartMs_(ev);
+  var key = String(startMs); // a booking Ilvi moves gets a fresh reminder for its new time
+  if (startMs <= now || !p.email || p.reminderFor === key || p.reminderSkip === key) return;
+  if (startMs - Number(p.createdMs || 0) < CONFIG.REMINDER_MIN_LEAD_HOURS * HOUR_MS) {
+    setPrivateProps_(ev, { reminderSkip: key }); // the confirmation e-mail is recent enough
+    return;
+  }
+  // Claim first: if the claim fails nothing is sent; if sending fails the claim is undone
+  // and the next hourly run tries again. A reminder is never sent twice.
+  setPrivateProps_(ev, { reminderFor: key });
+  var booking = bookingSummary_(ev);
+  booking.token = token_(ev.id);
+  booking.cancellable = now < booking.cancelDeadlineMs;
+  var ok = sendSafely_(function () { mailReminder_(booking, { name: p.name, email: p.email }); });
+  if (!ok) setPrivateProps_(ev, { reminderFor: '' });
 }
 
 // ---------- one-time setup (run from the Apps Script editor) ----------

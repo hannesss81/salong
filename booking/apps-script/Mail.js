@@ -118,7 +118,7 @@ function mailConfirmation_(b, c) {
     to: c.email,
     subject: 'Broneering kinnitatud: ' + b.serviceName + ', ' + when,
     html: html, text: text,
-    attachments: [Utilities.newBlob(ics_(b), 'text/calendar', 'broneering.ics')],
+    attachments: [Utilities.newBlob(ics_(b), 'text/calendar; charset=utf-8', 'broneering.ics')],
   });
 }
 
@@ -156,7 +156,7 @@ function ownerRows_(b, c) {
     ['Aeg', esc_(formatDateEt_(b.startMs)) + ' kell ' + esc_(timeRange_(b))],
     ['Klient', esc_(c.name)],
     ['Telefon', '<a href="tel:' + esc_(c.phone) + '" style="color:#1d6b4a;">' + esc_(c.phoneRaw || c.phone) + '</a>'],
-    ['E-post', '<a href="mailto:' + esc_(c.email) + '" style="color:#1d6b4a;">' + esc_(c.email) + '</a>'],
+    ['E-post', '<a href="mailto:' + esc_(encodeURIComponent(c.email).replace(/%40/g, '@')) + '" style="color:#1d6b4a;">' + esc_(c.email) + '</a>'],
   ];
   if (c.comment) rows.push(['Kommentaar', esc_(c.comment).replace(/\n/g, '<br>')]);
   return rows;
