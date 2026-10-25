@@ -67,6 +67,7 @@ function serviceCard(service){
   card.className = 'service-card';
   const hasDesc = service.description && service.description.length > 0;
   const isLongDesc = hasDesc && service.description.length > 80;
+  const bookable = service.id && service.duration > 0 && service.bookable !== false;
 
   if (service.new) card.classList.add('service-card--new');
 
@@ -76,6 +77,10 @@ function serviceCard(service){
       <h3>${service.name}</h3>
       <span class="price">${formatPrice(service.price)}</span>
     </div>
+    ${bookable ? `<div class="service-book">
+      <span class="service-duration">${formatDuration(service.duration)}</span>
+      <a class="service-book-link" href="/broneeri/?teenus=${encodeURIComponent(service.id)}">Broneeri</a>
+    </div>` : ''}
     ${hasDesc ? `
       <div class="service-desc-wrap${isLongDesc ? ' collapsed' : ''}">
         <p class="service-desc">${service.description}</p>
@@ -96,6 +101,11 @@ function serviceCard(service){
   }
 
   return card;
+}
+
+function formatDuration(min){
+  const h = Math.floor(min / 60), m = min % 60;
+  return (h ? h + ' h' : '') + (h && m ? ' ' : '') + (m ? m + ' min' : '');
 }
 
 function formatPrice(v){ return new Intl.NumberFormat('et-EE',{ style:'currency', currency:'EUR', minimumFractionDigits:0 }).format(v); }
@@ -140,36 +150,11 @@ function initRevealAnimations() {
   reveals.forEach(el => observer.observe(el));
 }
 
-// Booklux integration placeholder
-// TODO: Replace this URL with actual Booklux embed URL when available
-const BOOKLUX_URL = null; // Set to your Booklux URL, e.g., 'https://booklux.com/your-salon'
-
-function initBooklux() {
-  const container = document.getElementById('booklux-container');
-  if (!container) return;
-
-  if (BOOKLUX_URL) {
-    // When Booklux URL is available, embed it
-    container.innerHTML = `
-      <iframe
-        src="${BOOKLUX_URL}"
-        width="100%"
-        height="600"
-        frameborder="0"
-        style="border-radius: 16px; border: 1px solid var(--glass-border);"
-        title="Broneeri aeg">
-      </iframe>
-    `;
-  }
-  // If no URL, keep the placeholder with contact options
-}
-
 window.addEventListener('DOMContentLoaded', () => {
   fetchPricing();
   setYear();
   initHeaderScroll();
   initRevealAnimations();
-  initBooklux();
 
   // The site used to install an offline cache (service worker) that could keep showing
   // outdated pages. Remove it for anyone who still has it; sw.js now deletes itself too.

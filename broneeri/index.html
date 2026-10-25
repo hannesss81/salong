@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Broneeri aeg – Pargi Ilustuudio</title>
+  <meta name="description" content="Broneeri aeg Pargi Ilustuudiosse Tartus: vali teenus, sobiv päev ja kellaaeg." />
+  <meta name="theme-color" content="#f8f8f6" />
+  <link rel="canonical" href="https://pargiilustuudio.eu/broneeri/" />
+  <meta property="og:title" content="Broneeri aeg – Pargi Ilustuudio" />
+  <meta property="og:description" content="Vali teenus, sobiv päev ja kellaaeg. Kinnitus tuleb e-postile." />
+  <meta property="og:url" content="https://pargiilustuudio.eu/broneeri/" />
+  <meta property="og:image" content="https://pargiilustuudio.eu/assets/og-image.jpg" />
+  <meta property="og:locale" content="et_EE" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/broneeri/broneeri.css" />
+</head>
+<body class="booking-page">
+  <header class="site-header" role="banner">
+    <a class="logo-wrap" href="/" aria-label="Pargi Ilustuudio avaleht">
+      <img src="/assets/logo-pargi.svg" alt="" class="logo" />
+      <span class="brand"><span class="brand-pargi">Pargi</span> <span class="brand-ilu">Ilustuudio</span></span>
+    </a>
+    <a class="cta small outline" href="tel:+37255697525">Helista</a>
+  </header>
+
+  <main id="main" class="bk" tabindex="-1">
+    <h1 class="bk-title">Broneeri aeg</h1>
+
+    <ol class="bk-steps" aria-label="Broneerimise sammud">
+      <li data-step="1"><span>1</span> Teenus</li>
+      <li data-step="2"><span>2</span> Aeg</li>
+      <li data-step="3"><span>3</span> Andmed</li>
+    </ol>
+
+    <p class="bk-status" id="bk-status" role="status" aria-live="polite"></p>
+
+    <!-- Step 1: service -->
+    <section class="bk-panel" id="step-1" aria-labelledby="step-1-h">
+      <h2 id="step-1-h" tabindex="-1">Vali teenus</h2>
+      <label class="bk-search">
+        <span class="visually-hidden">Otsi teenust</span>
+        <input type="search" id="service-search" placeholder="Otsi teenust, nt näopuhastus" autocomplete="off" />
+      </label>
+      <div id="service-list" class="bk-services" aria-live="polite">
+        <p class="bk-loading">Laen teenuseid…</p>
+      </div>
+    </section>
+
+    <!-- Step 2: date and time -->
+    <section class="bk-panel" id="step-2" aria-labelledby="step-2-h" hidden>
+      <h2 id="step-2-h" tabindex="-1">Vali aeg</h2>
+      <div class="bk-chosen" id="chosen-service"></div>
+      <div id="calendar-area">
+        <div class="bk-cal" id="calendar">
+          <div class="bk-cal-head">
+            <button type="button" class="bk-cal-nav" id="cal-prev" aria-label="Eelmine kuu">‹</button>
+            <span class="bk-cal-month" id="cal-month" aria-live="polite"></span>
+            <button type="button" class="bk-cal-nav" id="cal-next" aria-label="Järgmine kuu">›</button>
+          </div>
+          <div class="bk-cal-grid" id="cal-grid" role="grid" aria-labelledby="cal-month"></div>
+          <p class="bk-cal-legend"><span class="dot"></span> vabu aegu</p>
+        </div>
+        <div class="bk-times" id="times" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Step 3: details -->
+    <section class="bk-panel" id="step-3" aria-labelledby="step-3-h" hidden>
+      <h2 id="step-3-h" tabindex="-1">Sinu andmed</h2>
+      <div class="bk-summary" id="summary"></div>
+      <form id="details-form" novalidate>
+        <div class="bk-field">
+          <label for="f-name">Nimi</label>
+          <input id="f-name" name="name" autocomplete="name" required maxlength="80" aria-describedby="e-name" />
+          <p class="bk-err" id="e-name"></p>
+        </div>
+        <div class="bk-field">
+          <label for="f-phone">Telefon</label>
+          <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required maxlength="30" aria-describedby="e-phone" />
+          <p class="bk-err" id="e-phone"></p>
+        </div>
+        <div class="bk-field">
+          <label for="f-email">E-post <small>(kinnitus ja meeldetuletus tulevad siia)</small></label>
+          <input id="f-email" name="email" type="email" autocomplete="email" required maxlength="254" aria-describedby="e-email" />
+          <p class="bk-err" id="e-email"></p>
+        </div>
+        <div class="bk-field">
+          <label for="f-comment">Soovid midagi lisada? <small>(valikuline)</small></label>
+          <textarea id="f-comment" name="comment" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="bk-hp" aria-hidden="true">
+          <label for="f-website">Veebileht</label>
+          <input id="f-website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+        <p class="bk-note">Andmeid kasutame ainult Sinu broneeringu jaoks. <a href="/broneeri/privaatsus.html">Privaatsusteave</a></p>
+        <button type="submit" class="cta booking bk-submit" id="submit-btn">Kinnita broneering</button>
+      </form>
+    </section>
+
+    <!-- Done -->
+    <section class="bk-panel bk-done" id="step-done" aria-labelledby="done-h" hidden>
+      <div class="bk-check" aria-hidden="true">✓</div>
+      <h2 id="done-h" tabindex="-1">Aeg on broneeritud!</h2>
+      <div id="done-body"></div>
+      <div class="bk-actions">
+        <button type="button" class="cta outline" id="ics-btn">Lisa oma kalendrisse</button>
+        <a class="cta primary" href="/">Tagasi avalehele</a>
+      </div>
+    </section>
+
+    <!-- Cancel flow (?tuhista=..&t=..) -->
+    <section class="bk-panel" id="cancel" aria-labelledby="cancel-h" hidden>
+      <h2 id="cancel-h" tabindex="-1">Broneeringu tühistamine</h2>
+      <div id="cancel-body"><p class="bk-loading">Laen broneeringut…</p></div>
+    </section>
+
+    <!-- Fallback when booking is unavailable -->
+    <section class="bk-panel" id="offline" hidden>
+      <h2>Veebibroneerimine ei ole praegu saadaval</h2>
+      <p>Palun broneeri aeg telefoni või WhatsAppi teel. Vabandame!</p>
+      <div class="bk-actions">
+        <a class="cta accent" href="tel:+37255697525">Helista 5569 7525</a>
+        <a class="cta outline whatsapp" href="https://wa.me/37255697525" rel="noopener" target="_blank">WhatsApp</a>
+      </div>
+    </section>
+
+    <p class="bk-help">Küsimused? Helista <a href="tel:+37255697525">5569 7525</a> või kirjuta <a href="https://wa.me/37255697525" rel="noopener" target="_blank">WhatsAppis</a>.</p>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <p>Pargi Ilustuudio · Pargi 10-10, 50103 Tartu</p>
+      <div class="footer-nav"><ul><li><a href="/">Avaleht</a></li><li><a href="/broneeri/privaatsus.html">Privaatsus</a></li></ul></div>
+    </div>
+  </footer>
+
+  <script src="/broneeri/config.js"></script>
+  <script src="/broneeri/slots.js"></script>
+  <script src="/broneeri/broneeri.js"></script>
+</body>
+</html>
