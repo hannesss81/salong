@@ -30,8 +30,10 @@ function closedDates_(fromDate, days) {
 }
 
 function windowsFor_(fromDate, days) {
+  var schedule = getSchedule_();
   return PargiSlots.buildWindows({
-    fromDate: fromDate, days: days, weekly: CONFIG.WEEKLY_HOURS, closedDates: closedDates_(fromDate, days),
+    fromDate: fromDate, days: days, weekly: schedule.weekly, overrides: schedule.days,
+    closedDates: closedDates_(fromDate, days),
   });
 }
 
@@ -115,6 +117,7 @@ function getAvailability_() {
     ok: true,
     generatedMs: h.now,
     notBeforeMs: h.now + CONFIG.MIN_NOTICE_MIN * MINUTE_MS,
+    approvalBeforeMs: h.now + CONFIG.APPROVAL_WITHIN_HOURS * HOUR_MS, // earlier starts are requests
     horizonEndMs: h.toMs,
     bufferMin: CONFIG.BUFFER_MIN,
     stepMin: CONFIG.STEP_MIN,

@@ -2,19 +2,23 @@
 
 Customers book at `https://pargiilustuudio.eu/broneeri/`. Bookings land in Ilvi's Google Calendar
 as normal events; customers get confirmation, reminder and cancellation e-mails from her Gmail.
-Costs nothing to run.
+Ilvi opens and closes days, changes hours and answers short-notice requests on her phone at
+`https://pargiilustuudio.eu/broneeri/haldus/` ("Minu tööajad"). Costs nothing to run.
 
 ```
 broneeri/            public booking page (served by GitHub Pages with the rest of the site)
   index.html  broneeri.js  broneeri.css  privaatsus.html
   slots.js           slot engine, shared with the backend (pure JS, tested)
   config.js          backend URL (apiUrl). Empty = page shows "please call" fallback
+  haldus/            Ilvi's admin page: index.html haldus.js haldus.css manifest.webmanifest
 booking/
   apps-script/       Google Apps Script backend (web app, runs as Ilvi)
-    Config.js        hours, buffer, notice, deadlines, e-mail addresses  <- settings live here
+    Config.js        default hours, buffer, notice, deadlines, e-mail addresses  <- settings
     Api.js           doGet / doPost routing
     Availability.js  opening windows + busy times from her calendar
-    Bookings.js      book, look up, cancel, hourly reminders, setup()
+    Schedule.js      hours as set on the admin page (Script Properties), validation
+    Admin.js         admin API: e-mail login link, sessions, overview, hours, approvals
+    Bookings.js      book, look up, cancel, hourly trigger (expiry + reminders), setup()
     Store.js         calendar access, cancel-link tokens
     Mail.js          Estonian e-mails + .ics attachment
     Slots.js         GENERATED copy of broneeri/slots.js (node booking/dev/sync.js)
@@ -28,6 +32,22 @@ booking/
 
 ## How it works
 
+- Hours: by default Mon, Tue, Thu, Fri 9:30-20:00 (the last client finishes by 20:00);
+  Wednesday, Saturday and Sunday closed; public holidays closed. Customers see 8 weeks ahead,
+  rolling. On the admin page Ilvi switches single days open or closed, sets a day's hours,
+  closes a date range (vacation) or changes the default week. A day's setting beats the
+  default and the holiday rule. Stored in Script Properties (`SCHEDULE`); past days are pruned.
+- Bookings starting within 36 h are **requests**: the slot is held (yellow event titled
+  `OOTAB KINNITUST · ...`), the customer is told Ilvi will confirm, and Ilvi gets a "Kinnita:"
+  e-mail with a link to approve or decline (the link works without logging in; it signs the
+  event id). Approving sends the normal confirmation; declining frees the slot and tells the
+  customer. Requests not answered 2 h before the start are withdrawn by the hourly trigger and
+  both sides are told. Customers can withdraw a request at any time. Later bookings are instant.
+- Admin login: the page asks the backend to e-mail a login link to OWNER_EMAIL only (5 a day at
+  most). The link holds a 30-minute single-use token, swapped for a one-year session kept in
+  the phone's browser. `admin_logout_all` (or bumping `ADMIN_VERSION` in Script Properties)
+  signs out every device. Safari drops site data after 7 days without a visit; she then
+  asks for a new link.
 - Services, prices and durations come from `/pricing.json` (`id`, `duration`; `bookable: false`
   hides one). The booking page reads it directly; the backend fetches it from the live site
   (cached 10 min, last good copy kept), so the price list and booking can't disagree.
@@ -40,8 +60,8 @@ booking/
   marked "Vaba" (free) and declined invitations don't block. Estonian public holidays are
   closed. Busy times sent to the page are rounded out to the quarter hour.
 - Each booking is an event (title `Name · Service`, colour Sage) with contact details in the
-  description and private extended properties (`pargi=1`, email, phone, createdMs, rid,
-  reminderFor).
+  description and private extended properties (`pargi=1`, state, email, phone, comment,
+  createdMs, rid, reminderFor).
 - Cancel links carry an HMAC of the event id (secret in Script Properties). The token is only
   ever sent by e-mail, never in an API response. Online cancellation closes 24 h before;
   after that the page says to call.
@@ -64,7 +84,9 @@ node booking/dev/server.js         # http://127.0.0.1:8790/broneeri/  and  /__de
 ```
 
 The preview uses the real backend code with a fake calendar seeded with three sample events.
-`/__dev/` lists calendar events and renders every e-mail sent (with the .ics).
+`/__dev/` lists calendar events and renders every e-mail sent (with the .ics), including the
+admin login link: open `/broneeri/haldus/`, press "Saada link", then follow the link from the
+"Minu tööajad: sisselogimine" mail in `/__dev/`.
 When testing in the agent's Edge, bring the tab to the front (`Page.bringToFront`): Edge
 freezes background tabs and their fetches never complete.
 
@@ -90,19 +112,28 @@ Runs under **ilvi.metssalu@gmail.com**. Needs her Google login once in a browser
 Updating the backend later: edit, `node booking/dev/sync.js`, `clasp push -f`, then
 Deploy -> Manage deployments -> edit the web app -> Version: New version (keeps the same URL).
 
-## Settings to confirm with Ilvi (Config.js)
+## Settings (Config.js)
 
-- `WEEKLY_HOURS`: placeholder Mon-Fri 10-18, Sat 10-15. The site says "E-L kokkuleppel".
-- `MIN_NOTICE_MIN` (3 h), `CANCEL_DEADLINE_HOURS` (24), `HORIZON_DAYS` (60).
-- `CLOSED_ON_PUBLIC_HOLIDAYS` (true), `ALL_DAY_EVENTS_BLOCK` (true): if she keeps birthdays or
-  reminders as all-day events in her main calendar, those days would close.
+- `WEEKLY_HOURS` (defaults until she changes them on the admin page), `OPEN_DAY_DEFAULT`.
+- `MIN_NOTICE_MIN` (3 h), `CANCEL_DEADLINE_HOURS` (24, still to confirm with Ilvi),
+  `HORIZON_DAYS` (56), `APPROVAL_WITHIN_HOURS` (36), `REQUEST_EXPIRE_BEFORE_MIN` (120).
+- `CLOSED_ON_PUBLIC_HOLIDAYS` (true), `ALL_DAY_EVENTS_BLOCK` (true): an all-day event she adds
+  (e.g. "Puhkus") closes the day.
 
 ## Kasutusjuhend Ilvile (short)
 
+- **Minu tööajad** (pargiilustuudio.eu/broneeri/haldus/, pane telefoni avaekraanile): iga päeva
+  kõrval on lüliti. Roheline = kliendid saavad broneerida, hall = suletud. Kolmapäev ja
+  laupäev on vaikimisi suletud: laupäeva avamiseks lülita see roheliseks. Päeva puudutades
+  näed broneeringuid ja saad muuta kellaaegu. "Puhkus" sulgeb mitu päeva korraga.
+  Sisse logid e-posti lingiga (üks kord telefonis).
 - Uus veebibroneering ilmub Sinu Google'i kalendrisse (roheline) ja tuleb ka e-kiri
   "Uus broneering". Kirjas on kliendi telefon ja e-post; vastates kirjutad otse kliendile.
+- Lähema 36 tunni broneeringud on **soovid**: kalendris kollasena ("OOTAB KINNITUST") ja
+  e-kiri "Kinnita: ...". Vajuta kirjas nuppu ja vali Kinnita või Lükka tagasi; klient saab
+  kirja ise. Kui Sa ei vasta, võetakse soov 2 tundi enne algust tagasi.
 - Aja kinni panemiseks lisa kalendrisse tavaline sündmus (nt "Hambaarst 14-15").
-  Vaba päev: lisa terve päeva sündmus (nt "Puhkus").
+  Terve päeva sündmus (nt "Puhkus") sulgeb ka päeva.
 - Kui klient tühistab lingiga, kaob sündmus kalendrist ja Sulle tuleb kiri "Tühistatud".
 - Kui Sina pead aja muutma või tühistama: helista kliendile ja muuda/kustuta sündmus
   kalendris. Klient automaatset kirja selle kohta ei saa.
@@ -118,6 +149,6 @@ Deploy -> Manage deployments -> edit the web app -> Version: New version (keeps 
 - When Ilvi moves or deletes a booking herself, the customer is not e-mailed (the reminder
   does use the new time). Possible next step: detect moves in the hourly trigger.
 - SMS: not yet. Messente (about 0.04 EUR/SMS) can be added to reminders later.
-- Admin web UI for Ilvi (hours, days off, list of bookings): later, if Google Calendar
-  is not enough.
+- Optional: a Sunday-evening e-mail to Ilvi with next week's open days ("Laupäev suletud.
+  Avan?"), if she forgets to open Saturdays.
 - Health check: a daily `?action=ping` from Hermes that e-mails Hanku if booking is down.

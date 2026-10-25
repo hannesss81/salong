@@ -106,6 +106,7 @@ function createBooking_(body) {
       }
     }
     if (startMs < h.now || startMs >= h.toMs) return { ok: false, error: 'slot_taken' };
+    var pending = CONFIG.APPROVAL_WITHIN_HOURS > 0 && startMs - h.now < CONFIG.APPROVAL_WITHIN_HOURS * HOUR_MS;
 
     var upcoming = listBookings_(h.now, h.toMs).filter(function (b) {
       var p = privateProps_(b);
@@ -129,7 +130,7 @@ function createBooking_(body) {
     var count = counter.date === today ? Number(counter.n) || 0 : 0;
     if (count >= CONFIG.MAX_BOOKINGS_PER_DAY) return { ok: false, error: 'daily_limit' };
 
-    ev = Calendar.Events.insert(bookingEvent_(service, startMs, c, h.now, requestId), CONFIG.CALENDAR_ID);
+    ev = Calendar.Events.insert(bookingEvent_(service, startMs, c, h.now, requestId, pending), CONFIG.CALENDAR_ID);
     // The booking exists from here on: nothing below may turn it into an error for the customer.
     try {
       props.setProperty('DAILY_COUNT', JSON.stringify({ date: today, n: count + 1 }));
@@ -143,12 +144,17 @@ function createBooking_(body) {
 
   var booking = bookingSummary_(ev);
   var withToken = Object.assign({ token: token_(ev.id) }, booking);
-  booking.mailed = sendSafely_(function () { mailConfirmation_(withToken, c); });
-  if (CONFIG.NOTIFY_OWNER) sendSafely_(function () { mailOwnerNew_(withToken, c); });
+  if (booking.status === 'pending') {
+    booking.mailed = sendSafely_(function () { mailRequestReceived_(withToken, c); });
+    sendSafely_(function () { mailOwnerRequest_(booking, c, approvalToken_(ev.id)); }); // always: she must answer
+  } else {
+    booking.mailed = sendSafely_(function () { mailConfirmation_(withToken, c); });
+    if (CONFIG.NOTIFY_OWNER) sendSafely_(function () { mailOwnerNew_(withToken, c); });
+  }
   return { ok: true, booking: booking }; // the cancel token travels only by e-mail
 }
 
-function bookingEvent_(service, startMs, c, createdMs, requestId) {
+function bookingEvent_(service, startMs, c, createdMs, requestId, pending) {
   var endMs = startMs + service.duration * MINUTE_MS;
   var lines = [
     'Teenus: ' + service.name + ' (' + service.duration + ' min, ' + service.price + ' €)',
@@ -158,13 +164,14 @@ function bookingEvent_(service, startMs, c, createdMs, requestId) {
   ];
   if (c.comment) lines.push('Kommentaar: ' + c.comment);
   lines.push('', 'Broneeritud veebis ' + formatShortEt_(createdMs) + '.');
+  if (pending) lines.push('Lühikese etteteatamisega soov: kinnita või lükka tagasi e-kirja lingilt või haldusest.');
   return {
-    summary: c.name + ' · ' + service.name,
+    summary: (pending ? 'OOTAB KINNITUST · ' : '') + c.name + ' · ' + service.name,
     location: CONFIG.ADDRESS,
     description: lines.join('\n'),
     start: { dateTime: new Date(startMs).toISOString(), timeZone: 'Europe/Tallinn' },
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'Europe/Tallinn' },
-    colorId: CONFIG.EVENT_COLOR_ID,
+    colorId: pending ? CONFIG.PENDING_COLOR_ID : CONFIG.EVENT_COLOR_ID,
     reminders: { useDefault: true },
     extendedProperties: {
       private: {
@@ -175,6 +182,8 @@ function bookingEvent_(service, startMs, c, createdMs, requestId) {
         name: c.name,
         phone: c.phone,
         email: c.email,
+        comment: c.comment || '',
+        state: pending ? 'pending' : 'confirmed',
         createdMs: String(createdMs),
         rid: requestId || '',
         reminderFor: '', // start time (ms) the last reminder was sent for
@@ -196,6 +205,7 @@ function bookingSummary_(ev) {
     durationMin: Math.round((eventEndMs_(ev) - startMs) / MINUTE_MS),
     firstName: String(p.name || '').split(' ')[0],
     cancelDeadlineMs: startMs - CONFIG.CANCEL_DEADLINE_HOURS * HOUR_MS,
+    status: p.state === 'pending' ? 'pending' : 'confirmed',
   };
 }
 
@@ -206,7 +216,7 @@ function lookupBooking_(id, t) {
   var ev = getBookingEvent_(id);
   if (!ev) return { ok: false, error: 'not_found' };
   var b = bookingSummary_(ev);
-  b.cancellable = nowMs() < b.cancelDeadlineMs;
+  b.cancellable = b.status === 'pending' || nowMs() < b.cancelDeadlineMs; // a request can always be withdrawn
   return { ok: true, booking: b };
 }
 
@@ -219,7 +229,7 @@ function cancelBooking_(id, t) {
     ev = getBookingEvent_(id);
     if (!ev) return { ok: false, error: 'not_found' };
     booking = bookingSummary_(ev);
-    if (nowMs() >= booking.cancelDeadlineMs) return { ok: false, error: 'too_late' };
+    if (booking.status !== 'pending' && nowMs() >= booking.cancelDeadlineMs) return { ok: false, error: 'too_late' };
     Calendar.Events.remove(CONFIG.CALENDAR_ID, id);
     invalidateAvailability_();
   } finally {
@@ -232,7 +242,45 @@ function cancelBooking_(id, t) {
   return { ok: true };
 }
 
-// ---------- reminders (time-driven trigger, hourly) ----------
+// ---------- hourly trigger: expire unanswered requests, send reminders ----------
+
+function hourly() {
+  try {
+    expireRequests_();
+  } catch (err) {
+    console.error('expiring requests failed: ' + ((err && err.stack) || err));
+  }
+  sendReminders();
+}
+
+/** Requests Ilvi hasn't answered by REQUEST_EXPIRE_BEFORE_MIN before the start are withdrawn. */
+function expireRequests_() {
+  var now = nowMs();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  var expired = [];
+  try {
+    listBookings_(now - DAY_MS, now + CONFIG.REQUEST_EXPIRE_BEFORE_MIN * MINUTE_MS).forEach(function (ev) {
+      if (privateProps_(ev).state !== 'pending') return;
+      try {
+        Calendar.Events.remove(CONFIG.CALENDAR_ID, ev.id);
+        expired.push(ev);
+      } catch (err) {
+        console.error('could not expire ' + ev.id + ': ' + err);
+      }
+    });
+    if (expired.length) invalidateAvailability_();
+  } finally {
+    lock.releaseLock();
+  }
+  expired.forEach(function (ev) {
+    var p = privateProps_(ev);
+    var booking = bookingSummary_(ev);
+    var c = { name: p.name, phone: p.phone, phoneRaw: p.phone, email: p.email };
+    if (booking.startMs > now) sendSafely_(function () { mailRequestExpired_(booking, c); });
+    sendSafely_(function () { mailOwnerExpired_(booking, c); });
+  });
+}
 
 function sendReminders() {
   var now = nowMs();
@@ -249,7 +297,7 @@ function remindOne_(ev, now) {
   var p = privateProps_(ev);
   var startMs = eventStartMs_(ev);
   var key = String(startMs); // a booking Ilvi moves gets a fresh reminder for its new time
-  if (startMs <= now || !p.email || p.reminderFor === key || p.reminderSkip === key) return;
+  if (startMs <= now || !p.email || p.state === 'pending' || p.reminderFor === key || p.reminderSkip === key) return;
   if (startMs - Number(p.createdMs || 0) < CONFIG.REMINDER_MIN_LEAD_HOURS * HOUR_MS) {
     setPrivateProps_(ev, { reminderSkip: key }); // the confirmation e-mail is recent enough
     return;
@@ -266,15 +314,20 @@ function remindOne_(ev, now) {
 
 // ---------- one-time setup (run from the Apps Script editor) ----------
 
-/** Creates the signing secret and the hourly reminder trigger, and checks access. Safe to re-run. */
+/** Creates the signing secret and the hourly trigger, and checks access. Safe to re-run. */
 function setup() {
   secret_();
-  var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendReminders'; });
-  if (!has) ScriptApp.newTrigger('sendReminders').timeBased().everyHours(1).create();
+  var has = false;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    var fn = t.getHandlerFunction();
+    if (fn === 'sendReminders') ScriptApp.deleteTrigger(t); // older version's trigger
+    if (fn === 'hourly') has = true;
+  });
+  if (!has) ScriptApp.newTrigger('hourly').timeBased().everyHours(1).create();
   var n = Object.keys(services_()).length;
   var probe = Calendar.Events.list(CONFIG.CALENDAR_ID, { maxResults: 1, timeMin: new Date().toISOString() });
   var msg = 'OK: ' + n + ' bookable services, calendar reachable (' + ((probe.items || []).length) +
-    ' upcoming event sampled), reminder trigger ' + (has ? 'already present' : 'created') +
+    ' upcoming event sampled), hourly trigger ' + (has ? 'already present' : 'created') +
     ', e-mail quota left today: ' + MailApp.getRemainingDailyQuota() + '.';
   console.log(msg);
   return msg;

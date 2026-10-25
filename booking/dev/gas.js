@@ -187,6 +187,7 @@ function createGas(options) {
     },
     ScriptApp: {
       getProjectTriggers() { return triggers.slice(); },
+      deleteTrigger(t) { const i = triggers.indexOf(t); if (i !== -1) triggers.splice(i, 1); },
       newTrigger(fn) {
         const t = { fn, getHandlerFunction: () => fn };
         const b = { timeBased() { return b; }, everyHours(h) { t.everyHours = h; return b; }, everyMinutes(m) { t.everyMinutes = m; return b; }, create() { triggers.push(t); return t; } };

@@ -53,7 +53,7 @@ function devPanel() {
   return `<!doctype html><meta charset="utf-8"><title>Arendaja vaade</title>
 <style>body{font:15px system-ui;margin:24px;max-width:960px}table{border-collapse:collapse;width:100%;margin-bottom:24px}td{border-bottom:1px solid #ddd;padding:6px 8px}h2{margin-top:28px}</style>
 <h1>Arendaja vaade (võltskalender)</h1>
-<p><a href="/broneeri/">Broneerimisleht</a> · <form method="post" action="/__dev/reminders" style="display:inline"><button>Saada meeldetuletused kohe</button></form></p>
+<p><a href="/broneeri/">Broneerimisleht</a> · <a href="/broneeri/haldus/">Minu tööajad (haldus)</a> · <form method="post" action="/__dev/reminders" style="display:inline"><button>Käivita tunnitöö kohe (aegumised, meeldetuletused)</button></form></p>
 <h2>Kalender (${evs.length})</h2><table>${rows || '<tr><td>tühi</td></tr>'}</table>
 <h2>Saadetud kirjad (${gas.outbox.length})</h2><table>${mails || '<tr><td>ühtegi</td></tr>'}</table>`;
 }
@@ -83,7 +83,7 @@ const server = http.createServer((req, res) => {
     return send(res, 200, 'text/html; charset=utf-8', `<p style="font:14px system-ui">Kellele: ${esc(m.to)} · Vastus: ${esc(m.replyTo || '')}<br>Teema: <b>${esc(m.subject)}</b></p>${m.htmlBody}<hr><pre style="white-space:pre-wrap">${esc(m.body)}</pre>${att}`);
   }
   if (url.pathname === '/__dev/reminders' && req.method === 'POST') {
-    gas.run('sendReminders');
+    gas.run('hourly');
     res.writeHead(303, { Location: '/__dev/' });
     return res.end();
   }

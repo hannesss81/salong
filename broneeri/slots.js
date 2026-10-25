@@ -93,18 +93,29 @@ var PargiSlots = (function () {
   }
 
   /**
+   * Hours that apply to one date: a per-day override wins, then closed dates, then the
+   * weekly default. Returns { ranges: [['HH:MM', 'HH:MM'], ...], source }.
+   */
+  function dayRanges(opts, date) {
+    var overrides = opts.overrides || {};
+    if (Object.prototype.hasOwnProperty.call(overrides, date)) {
+      return { ranges: overrides[date] || [], source: 'override' };
+    }
+    if ((opts.closedDates || []).indexOf(date) !== -1) return { ranges: [], source: 'closed' };
+    var dow = localParts(localToUtc(date, '12:00')).isoDow;
+    return { ranges: (opts.weekly || {})[dow] || [], source: 'weekly' };
+  }
+
+  /**
    * Bookable windows [startMs, endMs] for `days` dates from `fromDate`.
-   * weekly: { isoDow: [['HH:MM', 'HH:MM'], ...] }; closedDates: ['YYYY-MM-DD', ...].
+   * weekly: { isoDow: [['HH:MM', 'HH:MM'], ...] }; closedDates: ['YYYY-MM-DD', ...];
+   * overrides: { 'YYYY-MM-DD': ranges } (an empty list closes the day).
    */
   function buildWindows(opts) {
     var out = [];
-    var closed = {};
-    (opts.closedDates || []).forEach(function (d) { closed[d] = true; });
     for (var i = 0; i < opts.days; i++) {
       var date = addDays(opts.fromDate, i);
-      if (closed[date]) continue;
-      var dow = localParts(localToUtc(date, '12:00')).isoDow;
-      (opts.weekly[dow] || []).forEach(function (r) {
+      dayRanges(opts, date).ranges.forEach(function (r) {
         out.push([localToUtc(date, r[0]), localToUtc(date, r[1])]);
       });
     }
@@ -170,6 +181,7 @@ var PargiSlots = (function () {
     localToUtc: localToUtc,
     localParts: localParts,
     estonianHolidays: estonianHolidays,
+    dayRanges: dayRanges,
     buildWindows: buildWindows,
     computeSlots: computeSlots,
     isSlotFree: isSlotFree,

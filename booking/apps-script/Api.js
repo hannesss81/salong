@@ -38,7 +38,9 @@ function doPost(e) {
     switch (body && body.action) {
       case 'book': return createBooking_(body);
       case 'cancel': return cancelBooking_(body.id, body.t);
-      default: return { ok: false, error: 'unknown_action' };
+      default:
+        if (/^admin_/.test(String(body && body.action))) return handleAdmin_(body);
+        return { ok: false, error: 'unknown_action' };
     }
   });
 }

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Minu tööajad – Pargi Ilustuudio</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#1d6b4a" />
+  <link rel="manifest" href="/broneeri/haldus/manifest.webmanifest" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/broneeri/haldus/haldus.css" />
+</head>
+<body class="adm-page">
+  <header class="adm-header">
+    <div>
+      <div class="adm-brand">Pargi Ilustuudio</div>
+      <h1 class="adm-title">Minu tööajad</h1>
+    </div>
+    <button type="button" class="adm-icon-btn" id="refresh-btn" aria-label="Värskenda" hidden>↻</button>
+  </header>
+
+  <main class="adm" id="main" tabindex="-1">
+    <p class="adm-toast" id="toast" role="status" aria-live="polite"></p>
+
+    <!-- Login -->
+    <section class="adm-card" id="v-login" hidden>
+      <h2>Logi sisse</h2>
+      <p>Saadame sisselogimise lingi Sinu e-postile. Ava kiri <strong>selles telefonis</strong> ja vajuta „Logi sisse“.</p>
+      <button type="button" class="adm-btn primary" id="login-btn">Saada link e-postile</button>
+      <p class="adm-muted" id="login-sent" hidden>Link on teel. Kui kirja mõne minuti jooksul pole, vaata rämpsposti kausta.</p>
+    </section>
+
+    <!-- Single request from the e-mail link -->
+    <section class="adm-card" id="v-request" hidden>
+      <h2>Broneeringusoov</h2>
+      <div id="request-body"><p class="adm-muted">Laen…</p></div>
+    </section>
+
+    <!-- Main -->
+    <div id="v-main" hidden>
+      <section id="pending" aria-label="Ootavad kinnitust"></section>
+
+      <section class="adm-card adm-days-card">
+        <h2>Järgmised 8 nädalat</h2>
+        <p class="adm-muted adm-help">Lüliti avab või sulgeb päeva uutele broneeringutele. Puuduta päeva, et muuta kellaaegu või näha broneeringuid.</p>
+        <div id="days"></div>
+      </section>
+
+      <section class="adm-card">
+        <details class="adm-more">
+          <summary><h2>Puhkus või mitu vaba päeva</h2></summary>
+          <p class="adm-muted">Sulgeb kõik päevad valitud vahemikus. Olemasolevad broneeringud jäävad alles.</p>
+          <div class="adm-row2">
+            <label>Alates <input type="date" id="vac-from" /></label>
+            <label>Kuni (k.a) <input type="date" id="vac-to" /></label>
+          </div>
+          <button type="button" class="adm-btn" id="vac-btn">Sulge need päevad</button>
+        </details>
+      </section>
+
+      <section class="adm-card">
+        <details class="adm-more">
+          <summary><h2>Tavaline nädal</h2></summary>
+          <p class="adm-muted">Nii on päevad avatud, kui Sa neid eraldi ei muuda.</p>
+          <div id="weekly"></div>
+          <button type="button" class="adm-btn" id="weekly-btn">Salvesta tavaline nädal</button>
+        </details>
+      </section>
+
+      <section class="adm-card adm-info">
+        <p>Klientide broneeringud tulevad Sinu Google'i kalendrisse. Kui lisad kalendrisse oma sündmuse (nt arst või telefoni teel kokku lepitud klient), on see aeg veebis kinni.</p>
+        <p class="adm-links"><a href="/broneeri/" target="_blank" rel="noopener">Ava broneerimisleht</a> · <button type="button" class="adm-link" id="logout-btn">Logi välja</button></p>
+      </section>
+    </div>
+
+    <section class="adm-card" id="v-offline" hidden>
+      <h2>Haldus pole veel seadistatud</h2>
+      <p>Broneerimissüsteemi aadress puudub (broneeri/config.js).</p>
+    </section>
+  </main>
+
+  <script src="/broneeri/config.js"></script>
+  <script src="/broneeri/slots.js"></script>
+  <script src="/broneeri/haldus/haldus.js"></script>
+</body>
+</html>

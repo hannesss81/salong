@@ -148,7 +148,91 @@ function mailReminder_(b, c) {
   send_({ to: c.email, subject: 'Meeldetuletus: ' + b.serviceName + ', ' + when, html: html, text: text });
 }
 
+function whenShort_(b) {
+  return formatDayMonthEt_(b.startMs) + ' kell ' + PargiSlots.localParts(b.startMs).time;
+}
+
+/** Short-notice booking: the customer learns it still needs Ilvi's confirmation. */
+function mailRequestReceived_(b, c) {
+  var html = '<p>Tere, ' + esc_(b.firstName) + '!</p>' +
+    '<p>Aitäh, Sinu soov on kohale jõudnud. Kuna aeg on juba varsti, kinnitab ' + esc_(CONFIG.OWNER_NAME) +
+    ' selle isiklikult. <strong>Saad kinnituse e-postile</strong> niipea kui võimalik.</p>' +
+    detailsTable_(bookingRows_(b)) +
+    '<p>Kui Sinu plaanid muutuvad, võid soovi tagasi võtta:</p>' + button_(cancelUrl_(b), 'Võta soov tagasi') +
+    '<p>Kiire küsimuse korral helista ' + esc_(CONFIG.PHONE) + '.</p>';
+  var text = 'Tere, ' + b.firstName + '!\n\nAitäh, Sinu soov on kohale jõudnud. Kuna aeg on juba varsti, kinnitab ' +
+    CONFIG.OWNER_NAME + ' selle isiklikult. Saad kinnituse e-postile niipea kui võimalik.\n\n' +
+    'Teenus: ' + b.serviceName + '\nAeg: ' + formatDateEt_(b.startMs) + ' kell ' + timeRange_(b) +
+    '\nHind: ' + priceText_(b.price) + '\n\nSoovi tagasivõtmine: ' + cancelUrl_(b) + '\nKüsimused: ' + CONFIG.PHONE;
+  send_({ to: c.email, subject: 'Broneeringusoov saadetud: ' + b.serviceName + ', ' + whenShort_(b), html: html, text: text });
+}
+
+function mailDeclined_(b, c) {
+  var html = '<p>Tere, ' + esc_(b.firstName) + '!</p>' +
+    '<p>Kahjuks ei saa ' + esc_(CONFIG.OWNER_NAME) + ' Sind sel ajal vastu võtta. Vabandame!</p>' +
+    detailsTable_([['Teenus', esc_(b.serviceName)], ['Aeg', esc_(formatDateEt_(b.startMs)) + ' kell ' + esc_(timeRange_(b))]]) +
+    '<p>Vali palun mõni teine aeg või helista ' + esc_(CONFIG.PHONE) + ', leiame koos sobiva.</p>' +
+    button_(bookUrl_(), 'Vali uus aeg');
+  var text = 'Tere, ' + b.firstName + '!\n\nKahjuks ei saa ' + CONFIG.OWNER_NAME + ' Sind sel ajal vastu võtta: ' +
+    b.serviceName + ', ' + formatDateEt_(b.startMs) + ' kell ' + timeRange_(b) + '. Vabandame!\n\n' +
+    'Uus aeg: ' + bookUrl_() + '\nVõi helista ' + CONFIG.PHONE + '.';
+  send_({ to: c.email, subject: 'Kahjuks see aeg ei sobi: ' + b.serviceName + ', ' + whenShort_(b), html: html, text: text });
+}
+
+function mailRequestExpired_(b, c) {
+  var html = '<p>Tere, ' + esc_(b.firstName) + '!</p>' +
+    '<p>Kahjuks ei jõudnud ' + esc_(CONFIG.OWNER_NAME) + ' Sinu soovi õigeks ajaks kinnitada, seega see aeg jääb ära. Vabandame!</p>' +
+    detailsTable_([['Teenus', esc_(b.serviceName)], ['Aeg', esc_(formatDateEt_(b.startMs)) + ' kell ' + esc_(timeRange_(b))]]) +
+    '<p>Helista palun ' + esc_(CONFIG.PHONE) + ' või vali uus aeg:</p>' + button_(bookUrl_(), 'Vali uus aeg');
+  var text = 'Tere, ' + b.firstName + '!\n\nKahjuks ei jõudnud ' + CONFIG.OWNER_NAME + ' Sinu soovi õigeks ajaks kinnitada: ' +
+    b.serviceName + ', ' + formatDateEt_(b.startMs) + ' kell ' + timeRange_(b) + '. Vabandame!\n\n' +
+    'Helista ' + CONFIG.PHONE + ' või vali uus aeg: ' + bookUrl_();
+  send_({ to: c.email, subject: 'Broneeringusoov aegus: ' + b.serviceName + ', ' + whenShort_(b), html: html, text: text });
+}
+
 // ---------- owner ----------
+function adminUrl_() {
+  return CONFIG.SITE_URL + CONFIG.ADMIN_PATH;
+}
+
+function adminRequestUrl_(id, t) {
+  return adminUrl_() + '?soov=' + encodeURIComponent(id) + '&t=' + encodeURIComponent(t);
+}
+
+function mailOwnerRequest_(b, c, approveToken) {
+  var expireH = CONFIG.REQUEST_EXPIRE_BEFORE_MIN / 60;
+  var html = '<p><strong>Uus broneeringusoov lähema ' + CONFIG.APPROVAL_WITHIN_HOURS + ' tunni kohta.</strong> ' +
+    'Klient ootab Sinu kinnitust; aeg on kalendris kollasena kinni hoitud.</p>' +
+    detailsTable_(ownerRows_(b, c)) +
+    button_(adminRequestUrl_(b.id, approveToken), 'Kinnita või lükka tagasi') +
+    '<p style="font-size:14px;color:#5a6560;">Kui Sa ei vasta, võetakse soov ' + expireH +
+    ' tundi enne algust automaatselt tagasi ja klient saab teate.</p>';
+  var text = 'Uus broneeringusoov (vajab kinnitust): ' + b.serviceName + ', ' + formatDateEt_(b.startMs) + ' kell ' +
+    timeRange_(b) + '\nKlient: ' + c.name + '\nTelefon: ' + (c.phoneRaw || c.phone) + '\nE-post: ' + c.email +
+    (c.comment ? '\nKommentaar: ' + c.comment : '') + '\n\nKinnita või lükka tagasi: ' + adminRequestUrl_(b.id, approveToken) +
+    '\nVastuseta soov aegub ' + expireH + ' tundi enne algust.';
+  send_({ to: CONFIG.OWNER_EMAIL, subject: 'Kinnita: ' + ownerSubjectTail_(b, c), html: html, text: text, replyTo: c.email });
+}
+
+function mailOwnerExpired_(b, c) {
+  var html = '<p><strong>Soov aegus</strong>, sest seda ei kinnitatud õigeks ajaks. Aeg on jälle vaba ja klient sai teate.</p>' +
+    detailsTable_(ownerRows_(b, c));
+  var text = 'Soov aegus: ' + b.serviceName + ', ' + formatDateEt_(b.startMs) + ' kell ' + timeRange_(b) +
+    '\nKlient: ' + c.name + '\nTelefon: ' + c.phone + '\nE-post: ' + c.email;
+  send_({ to: CONFIG.OWNER_EMAIL, subject: 'Soov aegus: ' + ownerSubjectTail_(b, c), html: html, text: text, replyTo: c.email });
+}
+
+function mailAdminLogin_(token) {
+  var url = adminUrl_() + '#login=' + encodeURIComponent(token);
+  var html = '<p>Tere!</p><p>Vajuta nupule, et avada oma tööaegade leht. Ava link samas telefonis, kus lehte kasutad.</p>' +
+    button_(url, 'Logi sisse') +
+    '<p style="font-size:14px;color:#5a6560;">Link kehtib 30 minutit ja töötab ühe korra. Kui Sa sisselogimist ei küsinud, ' +
+    'võid selle kirja lihtsalt kustutada.</p>';
+  var text = 'Sisselogimise link (kehtib 30 minutit, töötab ühe korra):\n' + url +
+    '\n\nKui Sa sisselogimist ei küsinud, võid selle kirja kustutada.';
+  send_({ to: CONFIG.OWNER_EMAIL, subject: 'Minu tööajad: sisselogimine', html: html, text: text });
+}
+
 
 function ownerRows_(b, c) {
   var rows = [

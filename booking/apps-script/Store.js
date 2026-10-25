@@ -51,12 +51,17 @@ function getBookingEvent_(id) {
 }
 
 /** Updates private properties; the full map is sent so nothing depends on patch merge rules. */
-function setPrivateProps_(ev, changes) {
+/** The event's private properties with `changes` applied (patch replaces the whole map). */
+function mergedPrivate_(ev, changes) {
   var props = {};
   var current = privateProps_(ev);
   Object.keys(current).forEach(function (k) { props[k] = current[k]; });
   Object.keys(changes).forEach(function (k) { props[k] = String(changes[k]); });
-  Calendar.Events.patch({ extendedProperties: { private: props } }, CONFIG.CALENDAR_ID, ev.id);
+  return props;
+}
+
+function setPrivateProps_(ev, changes) {
+  Calendar.Events.patch({ extendedProperties: { private: mergedPrivate_(ev, changes) } }, CONFIG.CALENDAR_ID, ev.id);
 }
 
 function eventStartMs_(ev) {
@@ -87,15 +92,9 @@ function secret_() {
 }
 
 function token_(id) {
-  var sig = Utilities.computeHmacSha256Signature(String(id), secret_());
-  return Utilities.base64EncodeWebSafe(sig).replace(/=+$/, '').slice(0, 32);
+  return hmac_(String(id)); // see Admin.js
 }
 
 function tokenOk_(id, t) {
-  if (!validEventId_(id) || typeof t !== 'string') return false;
-  var expected = token_(id);
-  if (t.length !== expected.length) return false;
-  var diff = 0;
-  for (var i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ t.charCodeAt(i);
-  return diff === 0;
+  return validEventId_(id) && safeEqual_(t, token_(id));
 }

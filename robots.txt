@@ -1,4 +1,5 @@
 User-agent: *
 Disallow: /booking/
+Disallow: /broneeri/haldus/
 
 Sitemap: https://pargiilustuudio.eu/sitemap.xml

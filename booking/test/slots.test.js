@@ -183,3 +183,29 @@ test('isSlotFree accepts a start that spans two touching windows, like computeSl
   assert.ok(times(S.computeSlots(opts)).includes('12:30'));
   assert.equal(S.isSlotFree(opts, at('12:30')), true);
 });
+
+test('buildWindows: per-day overrides beat weekly hours and closed dates', () => {
+  const weekly = { 1: [['09:30', '20:00']] }; // Monday only
+  const w = S.buildWindows({
+    fromDate: '2026-10-31', days: 3, weekly,
+    closedDates: ['2026-11-02'],
+    overrides: {
+      '2026-10-31': [['10:00', '14:00']], // open a Saturday
+      '2026-11-02': [['12:00', '16:00']], // open a closed date with other hours
+    },
+  });
+  assert.deepEqual(w, [
+    [S.localToUtc('2026-10-31', '10:00'), S.localToUtc('2026-10-31', '14:00')],
+    [S.localToUtc('2026-11-02', '12:00'), S.localToUtc('2026-11-02', '16:00')],
+  ]);
+  const closed = S.buildWindows({ fromDate: '2026-11-02', days: 1, weekly, overrides: { '2026-11-02': [] } });
+  assert.deepEqual(closed, []);
+});
+
+test('dayRanges tells which hours apply to a date and why', () => {
+  const opts = { weekly: { 1: [['09:30', '20:00']] }, closedDates: ['2026-12-24'], overrides: { '2026-10-31': [] } };
+  assert.deepEqual(S.dayRanges(opts, '2026-11-02'), { ranges: [['09:30', '20:00']], source: 'weekly' });
+  assert.deepEqual(S.dayRanges(opts, '2026-11-03'), { ranges: [], source: 'weekly' });
+  assert.deepEqual(S.dayRanges(opts, '2026-12-24'), { ranges: [], source: 'closed' });
+  assert.deepEqual(S.dayRanges(opts, '2026-10-31'), { ranges: [], source: 'override' });
+});

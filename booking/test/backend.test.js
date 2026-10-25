@@ -9,8 +9,15 @@ const NOW = S.localToUtc('2026-11-02', '08:00');
 const L = (date, hhmm) => S.localToUtc(date, hhmm);
 const iso = ms => new Date(ms).toISOString();
 
+// These tests were written for fixed hours and instant booking; admin.test.js covers the real defaults.
+const PINNED = {
+  OWNER_EMAIL: 'ilvi.test@example.com',
+  WEEKLY_HOURS: { 1: [['10:00', '18:00']], 2: [['10:00', '18:00']], 3: [['10:00', '18:00']], 4: [['10:00', '18:00']], 5: [['10:00', '18:00']], 6: [['10:00', '15:00']] },
+  APPROVAL_WITHIN_HOURS: 0,
+  HORIZON_DAYS: 60,
+};
 function setup(config) {
-  const gas = createGas({ quiet: true, config: Object.assign({ OWNER_EMAIL: 'ilvi.test@example.com' }, config) });
+  const gas = createGas({ quiet: true, config: Object.assign({}, PINNED, config) });
   gas.ctx.nowMs = () => NOW;
   return gas;
 }
@@ -189,11 +196,12 @@ test('reminders: sent once, a day ahead, and not for last-minute bookings', () =
   assert.ok(late.ok);
 });
 
-test('setup: one hourly reminder trigger and a signing secret, safe to run twice', () => {
+test('setup: one hourly trigger and a signing secret, safe to run twice', () => {
   const gas = setup();
   gas.run('setup');
   gas.run('setup');
-  assert.equal(gas.triggers.filter(t => t.fn === 'sendReminders').length, 1);
+  assert.equal(gas.triggers.filter(t => t.fn === 'hourly').length, 1);
+  assert.equal(gas.triggers.length, 1);
   assert.equal(gas.triggers[0].everyHours, 1);
   assert.ok((gas.props.get('HMAC_SECRET') || '').length >= 32);
 });

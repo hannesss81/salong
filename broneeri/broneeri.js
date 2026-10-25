@@ -334,7 +334,18 @@
     state.requestId = newRequestId();
     status('');
     renderSummary();
+    $('submit-btn').textContent = submitLabel();
     show('step-3', true);
+  }
+
+  /** Times starting soon are requests that Ilvi confirms personally. */
+  function needsApproval(ms) {
+    var av = state.availability;
+    return !!(av && av.approvalBeforeMs && ms < av.approvalBeforeMs);
+  }
+
+  function submitLabel() {
+    return state.startMs && needsApproval(state.startMs) ? 'Saada broneeringusoov' : 'Kinnita broneering';
   }
 
   $('cal-prev').addEventListener('click', function () { state.month = monthShift(state.month, -1); renderCalendar(); });
@@ -352,6 +363,10 @@
       el('dt', { text: 'Hind' }), el('dd', { text: price(s.price) + ' (tasumine kohapeal)' }),
     ]));
     box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda aega', onclick: function () { history.back(); } }));
+    if (needsApproval(ms)) {
+      box.appendChild(el('p', { class: 'bk-approval-note', text: 'See aeg on juba varsti, seega kinnitab Ilvi selle isiklikult. ' +
+        'Saad kinnituse e-postile, tavaliselt mõne tunni jooksul.' }));
+    }
   }
 
   var EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/;
@@ -414,10 +429,10 @@
       if (r.error === 'too_many') return status('Sul on juba mitu tulevast broneeringut. Uue aja jaoks palun helista ' + PHONE + '.', 'warn');
       status('Broneerimine ei õnnestunud. Palun proovi uuesti või helista ' + PHONE + '.', 'error');
     }).catch(function () {
-      status('Ühendus katkes. Palun vajuta uuesti „Kinnita broneering“: kui aeg jõudis juba kinni panna, topelt broneeringut ei teki.', 'error');
+      status('Ühendus katkes. Palun vajuta nuppu uuesti: kui aeg jõudis juba kinni panna, topelt broneeringut ei teki.', 'error');
     }).finally(function () {
       btn.disabled = false;
-      btn.textContent = 'Kinnita broneering';
+      btn.textContent = submitLabel();
     });
   });
 
@@ -425,6 +440,9 @@
 
   function done(b, email) {
     state.booking = b;
+    var pending = b.status === 'pending';
+    $('done-h').textContent = pending ? 'Soov on saadetud!' : 'Aeg on broneeritud!';
+    $('ics-btn').hidden = pending; // nothing to add before Ilvi confirms
     var body = $('done-body');
     body.innerHTML = '';
     body.appendChild(el('dl', { class: 'bk-summary-dl' }, [
@@ -432,7 +450,11 @@
       el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(b.startMs).date) + ' kell ' + timeOf(b.startMs) + '–' + timeOf(b.startMs + b.durationMin * 60000) }),
       el('dt', { text: 'Aadress' }), el('dd', {}, ['Pargi 10-10, Tartu', el('br'), 'Välisuksel vali number 10']),
     ]));
-    if (b.mailed === false) {
+    if (pending) {
+      body.appendChild(el('p', {}, ['Aeg on Sinu jaoks kinni hoitud. Kuna see on juba varsti, kinnitab Ilvi selle isiklikult. ',
+        el('strong', { text: 'Kinnituse saad e-postile' }), b.mailed === false ? '.' : ' (' + email + ').']));
+      body.appendChild(el('p', {}, ['Kiire küsimuse korral helista ', el('a', { href: 'tel:+37255697525', text: PHONE }), '.']));
+    } else if (b.mailed === false) {
       body.appendChild(el('p', {}, ['Sinu aeg on kirjas, kuid kinnituskirja saatmine ebaõnnestus. Tühistamiseks või küsimustega helista ',
         el('a', { href: 'tel:+37255697525', text: PHONE }), '.']));
     } else {
@@ -477,7 +499,9 @@
         return;
       }
       var b = r.booking;
-      box.appendChild(el('p', { text: 'Tere, ' + b.firstName + '!' }));
+      var pending = b.status === 'pending';
+      $('cancel-h').textContent = pending ? 'Broneeringusoovi tagasivõtmine' : 'Broneeringu tühistamine';
+      box.appendChild(el('p', { text: 'Tere, ' + b.firstName + '!' + (pending ? ' Ilvi pole seda soovi veel kinnitanud.' : '') }));
       box.appendChild(el('dl', { class: 'bk-summary-dl' }, [
         el('dt', { text: 'Teenus' }), el('dd', { text: b.serviceName }),
         el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(b.startMs).date) + ' kell ' + timeOf(b.startMs) }),
@@ -486,14 +510,15 @@
         box.appendChild(el('p', {}, ['Veebis saab tühistada kuni 24 tundi enne. Palun helista ', el('a', { href: 'tel:+37255697525', text: PHONE }), '.']));
         return;
       }
-      var btn = el('button', { type: 'button', class: 'cta accent', text: 'Jah, tühista broneering' });
+      var yes = pending ? 'Jah, võta soov tagasi' : 'Jah, tühista broneering';
+      var btn = el('button', { type: 'button', class: 'cta accent', text: yes });
       btn.addEventListener('click', function () {
         btn.disabled = true;
         btn.textContent = 'Tühistan…';
         api('POST', { action: 'cancel', id: id, t: token }).then(function (c) {
           box.innerHTML = '';
           if (c.ok) {
-            box.appendChild(el('p', { class: 'bk-ok', text: 'Broneering on tühistatud. Kinnitus tuleb ka e-postile.' }));
+            box.appendChild(el('p', { class: 'bk-ok', text: (pending ? 'Soov on tagasi võetud.' : 'Broneering on tühistatud.') + ' Kinnitus tuleb ka e-postile.' }));
           } else if (c.error === 'too_late') {
             box.appendChild(el('p', { text: 'Tühistamiseks on veebis liiga hilja. Palun helista ' + PHONE + '.' }));
           } else {
@@ -502,7 +527,7 @@
           box.appendChild(el('p', {}, [el('a', { class: 'cta primary', href: '/broneeri/', text: 'Broneeri uus aeg' })]));
         }).catch(function () {
           btn.disabled = false;
-          btn.textContent = 'Jah, tühista broneering';
+          btn.textContent = yes;
           status('Ühendus katkes. Palun proovi uuesti või helista ' + PHONE + '.', 'error');
         });
       });
