@@ -549,6 +549,11 @@
       startCancel(id, token);
       return;
     }
+    if (cfg.bookingOpen === false) {
+      $('offline').querySelector('h2').textContent = 'Veebibroneerimine avatakse peagi';
+      show('offline', false);
+      return;
+    }
     history.replaceState({ panel: 'step-1' }, '');
     show('step-1', null);
     loadAvailability().catch(function () {});

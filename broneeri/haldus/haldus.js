@@ -42,6 +42,11 @@
   function isoDow(d) { return S.localParts(S.localToUtc(d, '12:00')).isoDow; }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function telHref(p) { return 'tel:' + String(p || '').replace(/[^\d+]/g, ''); }
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function durationText(min) {
+    var h = Math.floor(min / 60), m = min % 60;
+    return (h ? h + ' h' : '') + (h && m ? ' ' : '') + (m ? m + ' min' : '');
+  }
   /** '+37251112222' -> '5111 2222'; foreign numbers stay as they are. */
   function phoneText(p) {
     var m = /^\+372(\d{7,8})$/.exec(String(p || ''));
@@ -89,7 +94,7 @@
     toast('Ei õnnestunud. Kontrolli internetiühendust ja proovi uuesti.', 'error');
   }
 
-  var VIEWS = ['v-login', 'v-request', 'v-main', 'v-offline'];
+  var VIEWS = ['v-login', 'v-request', 'v-main', 'v-add', 'v-offline'];
   function view(id) {
     VIEWS.forEach(function (v) { $(v).hidden = v !== id; });
     $('refresh-btn').hidden = id !== 'v-main';
@@ -342,19 +347,42 @@
       box.appendChild(el('p', { class: 'adm-note', text: 'Sinu kalendris on terve päeva sündmus (' + day.allDay.join(', ') +
         '), seega on päev veebis kinni. Ava päev, kustutades selle sündmuse kalendrist.' }));
     }
+    var items = dayItems(day, true);
+    box.appendChild(items.length ? el('ul', { class: 'adm-events' }, items) : el('p', { class: 'adm-muted', text: 'Sel päeval broneeringuid pole.' }));
+    box.appendChild(el('p', {}, [el('button', { type: 'button', class: 'adm-btn', text: '＋ Lisa aeg sellele päevale',
+      onclick: function () { openAdd(day.date); } })]));
+    box.appendChild(hoursEditor(day.ranges, function (ranges) { setDay(day, ranges); }, extra));
+    return box;
+  }
+
+  /** The day's bookings, her own appointments and other events, by time. */
+  function dayItems(day, withDelete) {
     var items = day.bookings.map(function (b) {
+      var who = [b.service, b.name].filter(Boolean).join(' · ') || 'Klient';
       return el('li', { class: b.pending ? 'is-pending' : '' }, [
         el('span', { class: 'adm-time', text: hm(b.time) + '–' + hm(b.end) }),
-        el('span', {}, [b.service + ' · ' + b.name + ' · ', el('a', { href: telHref(b.phone), text: phoneText(b.phone) }),
+        el('span', { class: 'adm-ev-text' }, [who, b.phone ? ' · ' : null, b.phone ? el('a', { href: telHref(b.phone), text: phoneText(b.phone) }) : null,
+          b.comment && b.manual ? el('span', { class: 'adm-muted', text: ' · ' + b.comment }) : null,
           b.pending ? el('em', { text: ' (ootab kinnitust)' }) : null]),
+        withDelete && b.manual ? el('button', { type: 'button', class: 'adm-del', text: 'Kustuta', 'aria-label': 'Kustuta ' + hm(b.time) + ' ' + who,
+          onclick: function () { deleteManual(b); } }) : null,
       ]);
     }).concat(day.other.map(function (o) {
       return el('li', { class: 'is-other' }, [el('span', { class: 'adm-time', text: hm(o.time) + '–' + hm(o.end) }), el('span', { text: o.summary })]);
     }));
     items.sort(function (a, b) { return a.firstChild.textContent.localeCompare(b.firstChild.textContent, 'et', { numeric: true }); });
-    box.appendChild(items.length ? el('ul', { class: 'adm-events' }, items) : el('p', { class: 'adm-muted', text: 'Sel päeval broneeringuid pole.' }));
-    box.appendChild(hoursEditor(day.ranges, function (ranges) { setDay(day, ranges); }, extra));
-    return box;
+    return items;
+  }
+
+  function deleteManual(b) {
+    var who = [b.name, b.service].filter(Boolean).join(', ');
+    if (!confirm('Kustutan aja ' + dateShort(b.date) + ' kell ' + hm(b.time) + '–' + hm(b.end) + (who ? ' (' + who + ')' : '') + '?')) return;
+    toast('Kustutan…');
+    adminApi({ action: 'admin_delete_event', id: b.id }).then(function (r) {
+      if (!r.ok && r.error !== 'not_found') { toast('Ei õnnestunud kustutada.', 'error'); return; }
+      toast('Kustutatud ✓', 'ok');
+      loadMain();
+    }).catch(saveError);
   }
 
   function confirmClose(days) {
@@ -380,6 +408,151 @@
       renderDays();
       toast(WD[day.isoDow] + ' ' + dateShort(day.date) + ': ' + (day.ranges.length ? 'avatud ' + rangesText(day.ranges) : 'suletud') + ' ✓', 'ok');
     }).catch(saveError);
+  }
+
+  // ---------- add an appointment ----------
+
+  var services = null; // bookable services from the price list
+  function loadServiceList() {
+    if (services) return Promise.resolve(services);
+    return fetch('/pricing.json').then(function (r) { return r.json(); }).then(function (d) {
+      services = d.services.filter(function (s) { return s.id && s.duration > 0 && s.bookable !== false; })
+        .map(function (s) { return { id: s.id, name: s.name, duration: s.duration, group: (s.categories || [])[0] || 'Muud' }; });
+      return services;
+    }).catch(function () { services = []; return services; });
+  }
+
+  function fillSelects() {
+    var hour = $('add-hour'), min = $('add-min'), svc = $('add-service'), dur = $('add-duration');
+    if (hour.options.length) return;
+    for (var h = 7; h <= 21; h++) hour.appendChild(el('option', { value: pad2(h), text: String(h) }));
+    for (var m = 0; m < 60; m += 5) min.appendChild(el('option', { value: pad2(m), text: pad2(m) }));
+    svc.appendChild(el('option', { value: '', text: 'Muu (vali kestus ise)' }));
+    var groups = {};
+    services.forEach(function (s) {
+      if (!groups[s.group]) { groups[s.group] = el('optgroup', { label: s.group }); svc.appendChild(groups[s.group]); }
+      groups[s.group].appendChild(el('option', { value: s.id, text: s.name + ' (' + durationText(s.duration) + ')' }));
+    });
+    for (var d = 5; d <= 300; d += 5) dur.appendChild(el('option', { value: String(d), text: durationText(d) }));
+    svc.addEventListener('change', function () {
+      var s = services.filter(function (x) { return x.id === svc.value; })[0];
+      if (s) dur.value = String(s.duration);
+    });
+    $('add-date').addEventListener('change', renderAddDay);
+  }
+
+  function setAddTime(hhmm) {
+    var h = Math.min(21, Math.max(7, Number(hhmm.slice(0, 2))));
+    $('add-hour').value = pad2(h);
+    $('add-min').value = pad2(Math.round(Number(hhmm.slice(3)) / 5) * 5 % 60);
+  }
+
+  function resetAddForm(keepDate) {
+    $('add-service').value = '';
+    $('add-duration').value = '60';
+    $('add-name').value = '';
+    $('add-phone').value = '';
+    $('add-note').value = '';
+    if (!keepDate) setAddTime('10:00');
+  }
+
+  function openAdd(date) {
+    toast('');
+    loadServiceList().then(function () {
+      fillSelects();
+      var today = state.data.today;
+      var dateInput = $('add-date');
+      dateInput.min = today;
+      dateInput.max = S.addDays(today, 366);
+      dateInput.value = date || today;
+      resetAddForm(false);
+      history.pushState({ add: 1 }, '');
+      view('v-add');
+      renderAddDay();
+      window.scrollTo(0, 0);
+    });
+  }
+
+  function closeAdd() {
+    view('v-main');
+    render();
+  }
+
+  window.addEventListener('popstate', function () {
+    if (!$('v-add').hidden) closeAdd();
+  });
+  $('add-open').addEventListener('click', function () { openAdd(null); });
+  $('add-close').addEventListener('click', function () { history.back(); });
+
+  /** What is already noted for the chosen date, so nothing is entered twice. */
+  function renderAddDay() {
+    var box = $('add-day');
+    box.innerHTML = '';
+    var date = $('add-date').value;
+    if (!date) return;
+    var day = dayByDate(date);
+    var title = WD_LONG[isoDow(date)] + ', ' + dateLong(date);
+    if (!day) {
+      box.appendChild(el('p', { class: 'adm-muted', text: title + ': kaugemal kui 8 nädalat, siin seda päeva ei näe.' }));
+      return;
+    }
+    var hours = day.allDay.length ? 'veebis kinni (' + day.allDay.join(', ') + ')' : day.ranges.length ? 'veebis avatud ' + rangesText(day.ranges) : 'veebis suletud';
+    box.appendChild(el('p', { class: 'adm-add-day-h' }, [el('b', { text: title }), ' · ' + hours]));
+    var items = dayItems(day, false);
+    box.appendChild(items.length ? el('ul', { class: 'adm-events' }, items) : el('p', { class: 'adm-muted', text: 'Sel päeval pole veel midagi kirjas.' }));
+  }
+
+  $('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    saveAdd(false);
+  });
+
+  function saveAdd(force) {
+    var date = $('add-date').value;
+    if (!date || date < $('add-date').min || date > $('add-date').max) { toast('Vali kuupäev (täna või hiljem).', 'warn'); return Promise.resolve(); }
+    var btn = $('add-save');
+    btn.disabled = true;
+    toast('Salvestan…');
+    return adminApi({
+      action: 'admin_add_event',
+      date: date,
+      time: $('add-hour').value + ':' + $('add-min').value,
+      serviceId: $('add-service').value,
+      durationMin: Number($('add-duration').value),
+      name: $('add-name').value,
+      phone: $('add-phone').value,
+      note: $('add-note').value,
+      force: force,
+    }).then(function (r) {
+      if (r.error === 'overlap') {
+        var list = r.conflicts.map(function (c) { return (c.time ? hm(c.time) + '–' + hm(c.end) : 'terve päev') + '  ' + c.summary; }).join('\n');
+        btn.disabled = false;
+        if (confirm('See aeg kattub teisega või jääb vahe alla 15 minuti:\n' + list + '\n\nSalvestan ikkagi?')) return saveAdd(true);
+        toast('');
+        return;
+      }
+      if (!r.ok) { toast('Ei õnnestunud. Kontrolli kuupäeva, kellaaega ja kestust.', 'warn'); return; }
+      var ev = r.event;
+      toast('Lisatud: ' + WD[isoDow(ev.date)] + ' ' + dateShort(ev.date) + ' kell ' + hm(ev.time) + '–' + hm(ev.end) + ' ✓', 'ok');
+      var day = dayByDate(ev.date);
+      if (day) day.bookings.push(ev);
+      // Ready for the next one on the same day: starts 15 minutes after this one.
+      var next = S.localParts(S.localToUtc(ev.date, ev.end) + 15 * 60000).time;
+      resetAddForm(true);
+      setAddTime(next);
+      renderAddDay();
+      refreshQuietly();
+    }).catch(saveError).finally(function () { btn.disabled = false; });
+  }
+
+  /** Reloads the overview in the background (keeps the current view). */
+  function refreshQuietly() {
+    adminApi({ action: 'admin_overview' }).then(function (r) {
+      if (!r.ok) return;
+      state.data = r;
+      state.loadedAt = Date.now();
+      if (!$('v-add').hidden) renderAddDay();
+    }).catch(function () {});
   }
 
   // ---------- vacation ----------

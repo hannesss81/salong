@@ -68,6 +68,7 @@ function serviceCard(service){
   const hasDesc = service.description && service.description.length > 0;
   const isLongDesc = hasDesc && service.description.length > 80;
   const bookable = service.id && service.duration > 0 && service.bookable !== false;
+  const bookingOpen = !(window.PARGI_BOOKING && window.PARGI_BOOKING.bookingOpen === false);
 
   if (service.new) card.classList.add('service-card--new');
 
@@ -79,7 +80,7 @@ function serviceCard(service){
     </div>
     ${bookable ? `<div class="service-book">
       <span class="service-duration">${formatDuration(service.duration)}</span>
-      <a class="service-book-link" href="/broneeri/?teenus=${encodeURIComponent(service.id)}">Broneeri</a>
+      ${bookingOpen ? `<a class="service-book-link" href="/broneeri/?teenus=${encodeURIComponent(service.id)}">Broneeri</a>` : ''}
     </div>` : ''}
     ${hasDesc ? `
       <div class="service-desc-wrap${isLongDesc ? ' collapsed' : ''}">
@@ -150,7 +151,20 @@ function initRevealAnimations() {
   reveals.forEach(el => observer.observe(el));
 }
 
+/** Before online booking opens, the booking section points to phone and WhatsApp instead. */
+function applyBookingState(){
+  if (!(window.PARGI_BOOKING && window.PARGI_BOOKING.bookingOpen === false)) return;
+  const intro = document.querySelector('#broneerimine .intro');
+  if (intro) intro.textContent = 'Veebibroneerimine avatakse peagi. Seni broneeri aeg telefoni või WhatsAppi teel.';
+  const box = document.querySelector('#broneerimine .booking-cta-box');
+  if (box) {
+    box.innerHTML = '<div class="hero-actions"><a class="cta accent" href="tel:+37255697525">Helista 5569 7525</a>' +
+      '<a class="cta outline whatsapp" href="https://wa.me/37255697525" rel="noopener" target="_blank">WhatsApp</a></div>';
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  applyBookingState();
   fetchPricing();
   setYear();
   initHeaderScroll();

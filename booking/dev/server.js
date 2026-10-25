@@ -4,7 +4,9 @@
  *   node booking/dev/server.js          -> http://127.0.0.1:8790/broneeri/
  * Serves the website, answers /api with the real Apps Script code running on fakes
  * (booking/dev/gas.js), and shows the fake calendar and sent e-mails at /__dev/.
- * Env: PORT (8790), LATENCY_MS (700, mimics Apps Script response times), SEED (1).
+ * Env: PORT (8790), LATENCY_MS (700, mimics Apps Script response times), SEED (1),
+ *      REAL_API=1 serves the real broneeri/config.js (live backend) instead of the fakes,
+ *      BOOKING_OPEN=0 previews the "opening soon" state.
  */
 'use strict';
 const http = require('node:http');
@@ -74,6 +76,11 @@ const server = http.createServer((req, res) => {
       if (process.env.LOG) console.log(new Date().toISOString(), req.method, req.url, 'answered in', Date.now() - t0, 'ms', out.getContent().slice(0, 80));
     }, LATENCY));
     return;
+  }
+  if (url.pathname === '/broneeri/config.js' && process.env.REAL_API !== '1') {
+    const open = process.env.BOOKING_OPEN !== '0';
+    return send(res, 200, MIME['.js'], `// dev server: fake backend at /api (REAL_API=1 serves the real file)\n` +
+      `window.PARGI_BOOKING = { apiUrl: '', bookingOpen: ${open} };\n`);
   }
   if (url.pathname === '/__dev/' || url.pathname === '/__dev') return send(res, 200, 'text/html; charset=utf-8', devPanel());
   const mail = url.pathname.match(/^\/__dev\/mail\/(\d+)$/);

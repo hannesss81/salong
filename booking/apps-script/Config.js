@@ -48,6 +48,7 @@ var CONFIG = {
   MAX_BOOKINGS_PER_DAY: 12,        // safety valve against floods; more than one person can serve
   MAIL_QUOTA_RESERVE: 10,          // stop taking bookings when fewer Gmail recipients are left today
   EVENT_COLOR_ID: '2',             // Google Calendar colour of online bookings (2 = Sage)
+  MANUAL_COLOR_ID: '7',            // colour of appointments she adds on her page (7 = Peacock)
   NOTIFY_OWNER: true,
   AVAILABILITY_CACHE_SECONDS: 60,
 };

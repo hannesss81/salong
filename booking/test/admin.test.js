@@ -288,3 +288,103 @@ test('setup replaces an old reminder-only trigger with the hourly one', () => {
   gas.run('setup');
   assert.deepEqual(gas.triggers.map(t => t.fn), ['hourly']);
 });
+
+// ---------- her own appointments ("Lisa aeg") ----------
+
+const freeTimes = (gas, date, durationMin) => {
+  const av = gas.get({ action: 'availability' });
+  return S.computeSlots({ windows: av.windows, busy: av.busy, durationMin, bufferMin: 15, stepMin: 15, notBeforeMs: av.notBeforeMs })
+    .filter(ms => S.localParts(ms).date === date).map(ms => S.localParts(ms).time);
+};
+
+test('her own appointment: the service sets the duration, it blocks time with the gap, nobody is e-mailed', () => {
+  const gas = setup();
+  const s = session(gas);
+  gas.outbox.length = 0;
+  const r = gas.post({ action: 'admin_add_event', s, date: '2026-11-05', time: '10:00', serviceId: 'naopuhastus',
+    name: 'Mari', phone: '5555 1234', note: 'sõbranna' });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const ev = gas.calendar.api.Events.get('primary', r.event.id);
+  assert.equal(ev.summary, 'Mari · Näopuhastus');
+  assert.equal(Date.parse(ev.start.dateTime), L('2026-11-05', '10:00'));
+  assert.equal(Date.parse(ev.end.dateTime), L('2026-11-05', '11:00'));
+  const free = freeTimes(gas, '2026-11-05', 30);
+  assert.ok(!free.includes('09:30') && !free.includes('11:00'), 'the 15-minute gap applies');
+  assert.ok(free.includes('11:15'));
+  assert.equal(book(gas, L('2026-11-05', '10:30')).error, 'slot_taken');
+  const day = gas.post({ action: 'admin_overview', s }).days.find(d => d.date === '2026-11-05');
+  assert.deepEqual(day.bookings.map(b => [b.id, b.time, b.end, b.name, b.service, b.phone, b.comment, b.manual, b.pending]),
+    [[r.event.id, '10:00', '11:00', 'Mari', 'Näopuhastus', '+37255551234', 'sõbranna', true, false]]);
+  assert.deepEqual(day.other, []);
+  for (const at of [L('2026-11-03', '10:00'), L('2026-11-05', '08:30'), L('2026-11-05', '09:30')]) {
+    gas.ctx.nowMs = () => at;
+    gas.run('hourly');
+  }
+  assert.equal(gas.outbox.length, 0, 'no reminders, no expiry e-mails');
+  assert.equal(gas.calendar.api.Events.get('primary', r.event.id).status, 'confirmed');
+});
+
+test('without a service she gives the duration; name and phone are optional; closed days are fine', () => {
+  const gas = setup();
+  const s = session(gas);
+  const r = gas.post({ action: 'admin_add_event', s, date: '2026-11-04', time: '12:00', durationMin: 80 }); // a Wednesday
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const ev = gas.calendar.api.Events.get('primary', r.event.id);
+  assert.equal(ev.summary, 'Klient');
+  assert.equal(Date.parse(ev.end.dateTime) - Date.parse(ev.start.dateTime), 80 * 60000);
+  assert.equal(gas.post({ action: 'admin_add_event', s, date: '2026-11-04', time: '15:00' }).error, 'invalid');
+  const custom = gas.post({ action: 'admin_add_event', s, date: '2026-11-06', time: '10:00', serviceId: 'mask', durationMin: 45 });
+  assert.equal(custom.event.end, '10:45', 'her duration beats the service default');
+});
+
+test('overlaps and gaps under 15 minutes are reported; saved only when she insists', () => {
+  const gas = setup();
+  const s = session(gas);
+  assert.equal(book(gas, L('2026-11-05', '10:00')).ok, true); // online booking 10:00-11:00
+  const add = extra => gas.post(Object.assign({ action: 'admin_add_event', s, date: '2026-11-05', durationMin: 30 }, extra));
+  const r = add({ time: '11:05', name: 'Kati' });
+  assert.equal(r.error, 'overlap');
+  assert.deepEqual(r.conflicts, [{ date: '2026-11-05', time: '10:00', end: '11:00', summary: 'Mari Maasikas · Näopuhastus' }]);
+  assert.equal(gas.calendar.api.Events.list('primary', {}).items.length, 1, 'nothing saved');
+  assert.equal(add({ time: '11:05', name: 'Kati', force: true }).ok, true);
+  assert.equal(add({ time: '11:50' }).ok, true, 'exactly 15 minutes after is fine');
+  gas.addEvent({ summary: 'Puhkus', start: { date: '2026-11-06' }, end: { date: '2026-11-07' } });
+  const allDay = gas.post({ action: 'admin_add_event', s, date: '2026-11-06', time: '10:00', durationMin: 30 });
+  assert.deepEqual(allDay.conflicts, [{ date: '2026-11-06', time: '', end: '', summary: 'Puhkus' }]);
+});
+
+test('her own appointments are validated and need a session', () => {
+  const gas = setup();
+  const s = session(gas);
+  const bad = [
+    { date: '2026-11-01', time: '10:00', durationMin: 30 },   // yesterday
+    { date: '2027-11-10', time: '10:00', durationMin: 30 },   // more than a year ahead
+    { date: '2026-11-31', time: '10:00', durationMin: 30 },
+    { date: '2026-11-05', time: '10:03', durationMin: 30 },   // off the 5-minute grid
+    { date: '2026-11-05', time: '25:00', durationMin: 30 },
+    { date: '2026-11-05', time: '10:00', durationMin: 0 },
+    { date: '2026-11-05', time: '10:00', durationMin: 605 },
+    { date: '2026-11-05', time: '10:00', durationMin: 'pikk' },
+    { date: '2026-11-05', time: '10:00', serviceId: 'olematu' },
+  ];
+  bad.forEach(b => assert.equal(gas.post(Object.assign({ action: 'admin_add_event', s }, b)).error, 'invalid', JSON.stringify(b)));
+  assert.equal(gas.post({ action: 'admin_add_event', date: '2026-11-05', time: '10:00', durationMin: 30 }).error, 'unauthorized');
+  assert.equal(gas.post({ action: 'admin_add_event', s, date: '2027-01-15', time: '10:00', durationMin: 30 }).ok, true, 'beyond 8 weeks is fine');
+  assert.equal(gas.calendar.api.Events.list('primary', {}).items.length, 1);
+});
+
+test('she can delete her own appointments, but not online bookings or other calendar events', () => {
+  const gas = setup();
+  const s = session(gas);
+  const mine = gas.post({ action: 'admin_add_event', s, date: '2026-11-05', time: '14:00', durationMin: 30 });
+  const online = book(gas, L('2026-11-05', '10:00'));
+  const other = gas.addEvent({ summary: 'Hambaarst', start: { dateTime: iso(L('2026-11-06', '12:00')) }, end: { dateTime: iso(L('2026-11-06', '13:00')) } });
+  assert.equal(gas.post({ action: 'admin_delete_event', s, id: online.booking.id }).error, 'not_found');
+  assert.equal(gas.post({ action: 'admin_delete_event', s, id: other.id }).error, 'not_found');
+  assert.equal(gas.post({ action: 'admin_delete_event', s, id: '../x' }).error, 'not_found');
+  assert.equal(gas.post({ action: 'admin_delete_event', id: mine.event.id }).error, 'unauthorized');
+  assert.equal(gas.post({ action: 'admin_delete_event', s, id: mine.event.id }).ok, true);
+  assert.equal(gas.post({ action: 'admin_delete_event', s, id: mine.event.id }).error, 'not_found');
+  assert.ok(freeTimes(gas, '2026-11-05', 30).includes('14:00'), 'the time is free again');
+  assert.equal(gas.calendar.api.Events.list('primary', {}).items.length, 2);
+});

@@ -99,3 +99,22 @@ body.adm-page { background: var(--bg-warm); padding: 0; margin: 0; min-height: 1
 .adm-week-day { width: 6.2rem; font-weight: 600; }
 .adm-week-row select:disabled { opacity: 0.4; }
 #weekly + .adm-btn { margin-top: 0.75rem; }
+
+/* add an appointment */
+.adm-add-btn { width: 100%; font-size: 1.1rem; min-height: 3.2rem; margin-bottom: 0.75rem; }
+.adm-field { display: flex; flex-direction: column; gap: 0.2rem; margin: 0.6rem 0; font-size: 0.85rem; color: var(--text-muted); }
+.adm-field input, .adm-field select { width: 100%; box-sizing: border-box; }
+.adm input[type=text], .adm input[type=tel] { font: inherit; font-size: 1rem; min-height: 2.75rem; padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text); }
+.adm-opt { font-size: 0.8rem; opacity: 0.8; }
+.adm-label { display: flex; flex-direction: column; font-size: 0.85rem; color: var(--text-muted); gap: 0.2rem; }
+.adm-time-pick { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text); }
+.adm-time-pick b { font-size: 1.1rem; }
+.adm-add-day { background: var(--bg); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin: 0.25rem 0 0.5rem; font-size: 0.92rem; }
+.adm-add-day:empty { display: none; }
+.adm-add-day-h { margin: 0 0 0.25rem; }
+.adm-add-day .adm-events { margin: 0; }
+.adm-add-day .adm-events li:first-child { border-top: 0; }
+.adm-ev-text { flex: 1; min-width: 0; }
+.adm-del { flex: none; align-self: center; font: inherit; font-size: 0.85rem; padding: 0.3rem 0.6rem; min-height: 2.2rem;
+  border: 1px solid #e3a59d; border-radius: var(--radius-pill); background: #fff; color: #a3392b; cursor: pointer; }

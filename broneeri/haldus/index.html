@@ -42,8 +42,33 @@
       <div id="request-body"><p class="adm-muted">Laen…</p></div>
     </section>
 
+    <!-- Add an appointment she arranged herself -->
+    <section class="adm-card" id="v-add" hidden>
+      <h2>Lisa aeg</h2>
+      <p class="adm-muted">Telefoni teel või kohapeal kokku lepitud aeg. Veebis on see aeg siis kinni.</p>
+      <form id="add-form" novalidate>
+        <div class="adm-row2">
+          <label>Kuupäev <input type="date" id="add-date" required /></label>
+          <span class="adm-label">Kell
+            <span class="adm-time-pick"><select id="add-hour" aria-label="Tund"></select><b>:</b><select id="add-min" aria-label="Minutid"></select></span>
+          </span>
+        </div>
+        <div id="add-day" class="adm-add-day" aria-live="polite"></div>
+        <label class="adm-field">Teenus <select id="add-service"></select></label>
+        <label class="adm-field">Kestus <select id="add-duration"></select></label>
+        <label class="adm-field"><span>Kliendi nimi <span class="adm-opt">(soovi korral)</span></span> <input type="text" id="add-name" maxlength="80" autocomplete="off" autocapitalize="words" /></label>
+        <label class="adm-field"><span>Telefon <span class="adm-opt">(soovi korral)</span></span> <input type="tel" id="add-phone" maxlength="30" autocomplete="off" /></label>
+        <label class="adm-field"><span>Märkus <span class="adm-opt">(soovi korral)</span></span> <input type="text" id="add-note" maxlength="300" autocomplete="off" /></label>
+        <div class="adm-actions">
+          <button type="submit" class="adm-btn primary" id="add-save">Salvesta</button>
+          <button type="button" class="adm-btn" id="add-close">Valmis</button>
+        </div>
+      </form>
+    </section>
+
     <!-- Main -->
     <div id="v-main" hidden>
+      <button type="button" class="adm-btn primary adm-add-btn" id="add-open">＋ Lisa aeg</button>
       <section id="pending" aria-label="Ootavad kinnitust"></section>
 
       <section class="adm-card adm-days-card">

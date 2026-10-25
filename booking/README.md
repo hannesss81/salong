@@ -2,8 +2,9 @@
 
 Customers book at `https://pargiilustuudio.eu/broneeri/`. Bookings land in Ilvi's Google Calendar
 as normal events; customers get confirmation, reminder and cancellation e-mails from her Gmail.
-Ilvi opens and closes days, changes hours and answers short-notice requests on her phone at
-`https://pargiilustuudio.eu/broneeri/haldus/` ("Minu tööajad"). Costs nothing to run.
+Ilvi opens and closes days, changes hours, adds appointments she arranges herself and answers
+short-notice requests on her phone at `https://pargiilustuudio.eu/broneeri/haldus/`
+("Minu tööajad"). Costs nothing to run.
 
 ```
 broneeri/            public booking page (served by GitHub Pages with the rest of the site)
@@ -45,6 +46,15 @@ booking/
   event id). Approving sends the normal confirmation; declining frees the slot and tells the
   customer. Requests not answered 2 h before the start are withdrawn by the hourly trigger and
   both sides are told. Customers can withdraw a request at any time. Later bookings are instant.
+- "Lisa aeg": appointments she arranges by phone or in person (until now in her paper notebook)
+  are added on her page with date, time, service or duration, and optionally name, phone and a
+  note. Any day up to a year ahead, opening hours or not. They are calendar events (colour
+  Peacock, private property `pargiManual=1`) and block online booking with the 15-min gap like
+  any event; nobody is e-mailed. Overlaps and gaps under 15 min are shown first and saved only
+  if she insists. She can delete these from her page (not online bookings or other events).
+- `bookingOpen` in `broneeri/config.js`: `false` keeps online booking closed (booking page says
+  "avatakse peagi", price list without "Broneeri" links) while her page and cancel links work.
+  Used before launch so her notebook appointments go in first.
 - Admin login: the page asks the backend to e-mail a login link to OWNER_EMAIL only (5 a day at
   most). The link holds a 30-minute single-use token, swapped for a one-year session kept in
   the phone's browser. `admin_logout_all` (or bumping `ADMIN_VERSION` in Script Properties)
@@ -85,6 +95,7 @@ booking/
 ```
 node --test booking/test/          # slot engine + backend on fakes
 node booking/dev/server.js         # http://127.0.0.1:8790/broneeri/  and  /__dev/
+PORT=8791 REAL_API=1 node booking/dev/server.js   # same pages against the LIVE backend
 ```
 
 The preview uses the real backend code with a fake calendar seeded with three sample events.
@@ -132,7 +143,8 @@ hourly trigger created, e-mail quota left today: 100.`
 
 ## Kasutusjuhend Ilvile (short)
 
-- **Minu tööajad** (pargiilustuudio.eu/broneeri/haldus/, pane telefoni avaekraanile): iga päeva
+- **Minu tööajad** (pargiilustuudio.eu/broneeri/haldus/). Telefoni avaekraanile: ava leht
+  Chrome'is, vajuta ⋮ ja vali „Lisa avaekraanile“. Iga päeva
   kõrval on lüliti. Roheline = kliendid saavad broneerida, hall = suletud. Kolmapäev ja
   laupäev on vaikimisi suletud: laupäeva avamiseks lülita see roheliseks. Päeva puudutades
   näed broneeringuid ja saad muuta kellaaegu. "Puhkus" sulgeb mitu päeva korraga.
@@ -142,8 +154,12 @@ hourly trigger created, e-mail quota left today: 100.`
 - Lähema 36 tunni broneeringud on **soovid**: kalendris kollasena ("OOTAB KINNITUST") ja
   e-kiri "Kinnita: ...". Vajuta kirjas nuppu ja vali Kinnita või Lükka tagasi; klient saab
   kirja ise. Kui Sa ei vasta, võetakse soov 2 tundi enne algust tagasi.
-- Aja kinni panemiseks lisa kalendrisse tavaline sündmus (nt "Hambaarst 14-15").
-  Terve päeva sündmus (nt "Puhkus") sulgeb ka päeva.
+- **Lisa aeg**: telefoni teel või kohapeal kokku lepitud kliendi paned kirja nupuga
+  „＋ Lisa aeg“: kuupäev, kellaaeg, teenus (kestus tuleb ise). Nimi ja telefon soovi korral.
+  Veebis on see aeg siis kinni. Valesti lisatud aja kustutad päeva vaates nupuga „Kustuta“.
+  Märkmikku pole enam vaja: kõik ajad on lehel ja Google'i kalendris.
+- Muu kinni panemiseks (arst, koolitus) võid lisada sündmuse ka Google'i kalendrisse.
+  Terve päeva sündmus (nt "Puhkus") sulgeb päeva.
 - Kui klient tühistab lingiga, kaob sündmus kalendrist ja Sulle tuleb kiri "Tühistatud".
 - Kui Sina pead aja muutma või tühistama: helista kliendile ja muuda/kustuta sündmus
   kalendris. Klient automaatset kirja selle kohta ei saa.

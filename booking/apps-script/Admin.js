@@ -73,6 +73,8 @@ function handleAdmin_(body) {
     case 'admin_overview': return adminOverview_();
     case 'admin_set_days': return adminSetDays_(body.dates, body.ranges);
     case 'admin_set_weekly': return adminSetWeekly_(body.weekly);
+    case 'admin_add_event': return adminAddEvent_(body);
+    case 'admin_delete_event': return adminDeleteEvent_(body.id);
     case 'admin_logout_all':
       PropertiesService.getScriptProperties().setProperty('ADMIN_VERSION', String(Number(adminVersion_()) + 1));
       return { ok: true };
@@ -122,7 +124,34 @@ function adminBookingView_(ev) {
     email: p.email,
     comment: p.comment || '',
     pending: p.state === 'pending',
+    manual: false,
   };
+}
+
+/** Appointments she adds herself ("Lisa aeg"): private property pargiManual=1. */
+function manualView_(ev) {
+  var p = privateProps_(ev);
+  var s = eventStartMs_(ev);
+  return {
+    id: ev.id,
+    date: PargiSlots.localParts(s).date,
+    time: PargiSlots.localParts(s).time,
+    end: PargiSlots.localParts(eventEndMs_(ev)).time,
+    startMs: s,
+    service: p.serviceName || '',
+    name: p.name || '',
+    phone: p.phone || '',
+    email: '',
+    comment: p.note || '',
+    pending: false,
+    manual: true,
+  };
+}
+
+function busyCalendars_() {
+  var calendars = CONFIG.BUSY_CALENDAR_IDS.slice();
+  if (calendars.indexOf(CONFIG.CALENDAR_ID) === -1) calendars.push(CONFIG.CALENDAR_ID);
+  return calendars;
 }
 
 function adminOverview_() {
@@ -153,13 +182,12 @@ function adminOverview_() {
     byDate[date] = day;
   }
 
-  var calendars = CONFIG.BUSY_CALENDAR_IDS.slice();
-  if (calendars.indexOf(CONFIG.CALENDAR_ID) === -1) calendars.push(CONFIG.CALENDAR_ID);
   var pending = [];
-  calendars.forEach(function (calendarId) {
+  busyCalendars_().forEach(function (calendarId) {
     listEvents_(calendarId, h.fromMs, h.toMs).forEach(function (ev) {
-      if (calendarId === CONFIG.CALENDAR_ID && privateProps_(ev).pargi === '1' && ev.status !== 'cancelled') {
-        var b = adminBookingView_(ev);
+      var own = calendarId === CONFIG.CALENDAR_ID && ev.status !== 'cancelled' ? privateProps_(ev) : {};
+      if (own.pargi === '1' || own.pargiManual === '1') {
+        var b = own.pargi === '1' ? adminBookingView_(ev) : manualView_(ev);
         if (byDate[b.date]) byDate[b.date].bookings.push(b);
         if (b.pending) pending.push(b);
         return;
@@ -280,4 +308,112 @@ function adminDecide_(id, decision) {
     mailed = sendSafely_(function () { mailDeclined_(booking, c); });
   }
   return { ok: true, status: booking.status, mailed: mailed };
+}
+
+// ---------- her own appointments ("Lisa aeg") ----------
+
+/** Busy events touching [fromMs, toMs), as she would recognise them. */
+function conflictsBetween_(fromMs, toMs) {
+  var out = [];
+  busyCalendars_().forEach(function (calendarId) {
+    listEvents_(calendarId, fromMs, toMs).forEach(function (ev) {
+      var b = eventBusy_(ev);
+      if (!b || b[1] <= fromMs || b[0] >= toMs) return;
+      var allDay = !!(ev.start && ev.start.date);
+      out.push({
+        date: PargiSlots.localParts(b[0]).date,
+        time: allDay ? '' : PargiSlots.localParts(b[0]).time,
+        end: allDay ? '' : PargiSlots.localParts(b[1]).time,
+        summary: ev.summary || '(sündmus)',
+      });
+    });
+  });
+  return out;
+}
+
+/**
+ * Adds an appointment she arranged herself (phone, in person). Any day and time, opening hours
+ * or not; it blocks online booking like any calendar event. Overlaps and gaps under BUFFER_MIN
+ * are reported first and saved only with force: true.
+ */
+function adminAddEvent_(body) {
+  var today = PargiSlots.localParts(nowMs()).date;
+  var date = body.date;
+  if (!validDateKey_(date) || date < today || date > PargiSlots.addDays(today, 366)) return INVALID_;
+  var startMin = toMinutes_(body.time);
+  if (!(startMin >= 0) || startMin % 5) return INVALID_;
+  var service = null;
+  if (body.serviceId != null && body.serviceId !== '') {
+    service = services_()[String(body.serviceId)];
+    if (!service) return INVALID_;
+  }
+  var hasDuration = body.durationMin != null && body.durationMin !== '';
+  var duration = hasDuration ? Number(body.durationMin) : (service ? service.duration : NaN);
+  if (!(duration >= 5 && duration <= 600) || duration % 5) return INVALID_;
+  var name = clean_(body.name, 80);
+  var phoneRaw = clean_(body.phone, 30);
+  var phone = phoneRaw ? (normalizePhone_(phoneRaw) || phoneRaw) : '';
+  var note = clean_(body.note, 300);
+  var startMs = PargiSlots.localToUtc(date, body.time);
+  var endMs = startMs + duration * MINUTE_MS;
+  var gap = CONFIG.BUFFER_MIN * MINUTE_MS;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  var ev;
+  try {
+    if (body.force !== true) {
+      var conflicts = conflictsBetween_(startMs - gap, endMs + gap);
+      if (conflicts.length) return { ok: false, error: 'overlap', conflicts: conflicts };
+    }
+    var lines = [];
+    if (phone) lines.push('Telefon: ' + phone);
+    if (note) lines.push('Märkus: ' + note);
+    lines.push('Lisatud lehelt „Minu tööajad“.');
+    ev = Calendar.Events.insert({
+      summary: (name || 'Klient') + (service ? ' · ' + service.name : ''),
+      location: CONFIG.ADDRESS,
+      description: lines.join('\n'),
+      start: { dateTime: new Date(startMs).toISOString(), timeZone: 'Europe/Tallinn' },
+      end: { dateTime: new Date(endMs).toISOString(), timeZone: 'Europe/Tallinn' },
+      colorId: CONFIG.MANUAL_COLOR_ID,
+      reminders: { useDefault: true },
+      extendedProperties: {
+        private: {
+          pargiManual: '1',
+          serviceId: service ? service.id : '',
+          serviceName: service ? service.name : '',
+          name: name,
+          phone: phone,
+          note: note,
+        },
+      },
+    }, CONFIG.CALENDAR_ID);
+    invalidateAvailability_();
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, event: manualView_(ev) };
+}
+
+/** Deletes an appointment she added on her page; online bookings and other events are refused. */
+function adminDeleteEvent_(id) {
+  var NOT_FOUND = { ok: false, error: 'not_found' };
+  if (!validEventId_(id)) return NOT_FOUND;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ev;
+    try {
+      ev = Calendar.Events.get(CONFIG.CALENDAR_ID, id);
+    } catch (err) {
+      return NOT_FOUND;
+    }
+    if (!ev || ev.status === 'cancelled' || privateProps_(ev).pargiManual !== '1') return NOT_FOUND;
+    Calendar.Events.remove(CONFIG.CALENDAR_ID, id);
+    invalidateAvailability_();
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true };
 }
