@@ -87,7 +87,7 @@ function bookingRows_(b) {
 function send_(msg) {
   MailApp.sendEmail({
     to: msg.to,
-    subject: msg.subject,
+    subject: msg.subject.length > 230 ? msg.subject.slice(0, 229) + '…' : msg.subject,
     body: msg.text,
     htmlBody: layout_(msg.html),
     name: CONFIG.SALON_NAME,
@@ -152,19 +152,16 @@ function whenShort_(b) {
   return formatDayMonthEt_(b.startMs) + ' kell ' + PargiSlots.localParts(b.startMs).time;
 }
 
-/** Short-notice booking: the customer learns it still needs Ilvi's confirmation. */
+/** Receipt, not an appointment confirmation. No calendar invitation until Ilvi approves. */
 function mailRequestReceived_(b, c) {
-  var html = '<p>Tere, ' + esc_(b.firstName) + '!</p>' +
-    '<p>Aitäh, Sinu soov on kohale jõudnud. Kuna aeg on juba varsti, kinnitab ' + esc_(CONFIG.OWNER_NAME) +
-    ' selle isiklikult. <strong>Saad kinnituse e-postile</strong> niipea kui võimalik.</p>' +
-    detailsTable_(bookingRows_(b)) +
-    '<p>Kui Sinu plaanid muutuvad, võid soovi tagasi võtta:</p>' + button_(cancelUrl_(b), 'Võta soov tagasi') +
-    '<p>Kiire küsimuse korral helista ' + esc_(CONFIG.PHONE) + '.</p>';
-  var text = 'Tere, ' + b.firstName + '!\n\nAitäh, Sinu soov on kohale jõudnud. Kuna aeg on juba varsti, kinnitab ' +
-    CONFIG.OWNER_NAME + ' selle isiklikult. Saad kinnituse e-postile niipea kui võimalik.\n\n' +
-    'Teenus: ' + b.serviceName + '\nAeg: ' + formatDateEt_(b.startMs) + ' kell ' + timeRange_(b) +
-    '\nHind: ' + priceText_(b.price) + '\n\nSoovi tagasivõtmine: ' + cancelUrl_(b) + '\nKüsimused: ' + CONFIG.PHONE;
-  send_({ to: c.email, subject: 'Broneeringusoov saadetud: ' + b.serviceName + ', ' + whenShort_(b), html: html, text: text });
+  var receipt = 'Sinu broneeringusoov on kätte saadud. Aeg ei ole veel kinnitatud. Ilvi vaatab soovi üle ja saadab vastuse e-postile.';
+  var canWithdraw = nowMs() <= b.cancelDeadlineMs;
+  var rule = 'Veebis saab soovi tagasi võtta vähemalt 24 tundi enne algust. Hiljem palun helista ' + CONFIG.PHONE + '.';
+  var html = '<p>Tere, ' + esc_(b.firstName) + '!</p><p>' + receipt + '</p>' +
+    detailsTable_(bookingRows_(b)) + '<p>' + esc_(rule) + '</p>' + (canWithdraw ? button_(cancelUrl_(b), 'Võta soov tagasi') : '');
+  var text = 'Tere, ' + b.firstName + '!\n\n' + receipt + '\n\n' + b.serviceName + '\n' + formatDateEt_(b.startMs) +
+    ' kell ' + timeRange_(b) + '\nHind: ' + priceText_(b.price) + '\n\n' + rule + (canWithdraw ? '\n' + cancelUrl_(b) : '');
+  send_({ to: c.email, subject: 'Broneeringusoov on kätte saadud: ' + b.serviceName + ', ' + whenShort_(b), html: html, text: text });
 }
 
 function mailDeclined_(b, c) {
@@ -201,7 +198,7 @@ function adminRequestUrl_(id, t) {
 
 function mailOwnerRequest_(b, c, approveToken) {
   var expireH = CONFIG.REQUEST_EXPIRE_BEFORE_MIN / 60;
-  var html = '<p><strong>Uus broneeringusoov lähema ' + CONFIG.APPROVAL_WITHIN_HOURS + ' tunni kohta.</strong> ' +
+  var html = '<p><strong>Uus broneeringusoov.</strong> ' +
     'Klient ootab Sinu kinnitust; aeg on kalendris kollasena kinni hoitud.</p>' +
     detailsTable_(ownerRows_(b, c)) +
     button_(adminRequestUrl_(b.id, approveToken), 'Kinnita või lükka tagasi') +

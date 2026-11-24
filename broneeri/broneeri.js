@@ -11,6 +11,8 @@
   var cfg = window.PARGI_BOOKING || {};
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   var API = cfg.apiUrl || (LOCAL ? '/api' : '');
+  var trial = new URLSearchParams(location.hash.slice(1)).get('proov') || '';
+  if (!/^[A-Za-z0-9_-]{24,64}$/.test(trial)) trial = '';
 
   var MONTHS = ['jaanuar', 'veebruar', 'märts', 'aprill', 'mai', 'juuni', 'juuli', 'august', 'september', 'oktoober', 'november', 'detsember'];
   var WEEKDAYS = ['', 'esmaspäev', 'teisipäev', 'kolmapäev', 'neljapäev', 'reede', 'laupäev', 'pühapäev'];
@@ -22,7 +24,8 @@
     byId: {},
     availability: null,
     availabilityPromise: null,
-    service: null,
+    selectedIds: [],
+    service: null, // combined visit for the calendar and summaries
     date: null,
     startMs: null,
     month: null, // 'YYYY-MM'
@@ -125,7 +128,8 @@
     if (panel === 'step-done' || panel === 'cancel') return;
     if (state.booking) { // after a booking, "back" starts over instead of resubmitting
       state.booking = null;
-      state.service = null;
+      state.service = null; state.selectedIds = []; state.startMs = null;
+      renderServices($('service-search').value); renderPicks();
       panel = 'step-1';
     }
     if (panel !== 'step-1' && !state.service) panel = 'step-1';
@@ -146,7 +150,8 @@
   }
 
   function loadAvailability() {
-    state.availabilityPromise = api('GET', { action: 'availability' }).then(function (av) {
+    var request = trial ? api('POST', {action:'trial_availability', trial:trial}) : api('GET', {action:'availability'});
+    state.availabilityPromise = request.then(function (av) {
       if (!av.ok) throw new Error(av.error || 'availability');
       av.receivedAt = Date.now();
       state.availability = av;
@@ -204,7 +209,8 @@
         if (desc.length > 110) desc = desc.slice(0, 105).replace(/\s+\S*$/, '') + '…';
         ul.appendChild(el('li', {}, [el('button', {
           type: 'button', class: 'bk-service', 'data-id': s.id,
-          onclick: function () { chooseService(s.id, true); },
+          'aria-pressed': String(state.selectedIds.indexOf(s.id) !== -1),
+          onclick: function () { togglePick(s.id); },
         }, [
           el('span', { class: 'bk-service-name', text: s.name }),
           el('span', { class: 'bk-service-meta', text: duration(s.duration) + ' · ' + price(s.price) }),
@@ -217,10 +223,42 @@
     if (!shown) list.appendChild(el('p', { class: 'bk-empty', text: 'Ei leidnud sellist teenust. Proovi teist sõna või helista ' + PHONE + '.' }));
   }
 
-  function chooseService(id, push) {
-    var s = state.byId[id];
-    if (!s) return;
-    state.service = s;
+  function combinedVisit() {
+    var items = state.selectedIds.map(function (id) { return state.byId[id]; });
+    return { name: items.map(function (s) { return s.name; }).join(' + '),
+      price: items.reduce(function (n, s) { return n + Number(s.price); }, 0),
+      duration: items.reduce(function (n, s) { return n + s.duration; }, 0) };
+  }
+
+  function renderPicks() {
+    var ids = state.selectedIds, box = $('picked-services');
+    box.textContent = '';
+    $('pick-next').disabled = ids.length === 0;
+    if (!ids.length) { box.textContent = 'Ühtegi teenust pole valitud.'; return; }
+    var total = combinedVisit();
+    box.appendChild(el('strong', {text: 'Kokku: ' + duration(total.duration) + ' · ' + price(total.price)}));
+    var chips = el('div', {class: 'bk-picked-list'});
+    ids.forEach(function (id) {
+      var item = state.byId[id];
+      chips.appendChild(el('button', {type:'button', class:'bk-picked-item', text:item.name + ' ×',
+        'aria-label':'Eemalda ' + item.name, onclick:function () { togglePick(id); }}));
+    });
+    box.appendChild(chips);
+  }
+
+  function togglePick(id) {
+    var at = state.selectedIds.indexOf(id);
+    if (at < 0) state.selectedIds.push(id); else state.selectedIds.splice(at, 1);
+    state.service = null; state.startMs = null; state.requestId = null;
+    var btn = document.querySelector('.bk-service[data-id="' + id + '"]');
+    if (btn) btn.setAttribute('aria-pressed', String(at < 0));
+    renderPicks();
+  }
+
+  $('pick-next').addEventListener('click', function () { chooseVisit(true); });
+  function chooseVisit(push) {
+    if (!state.selectedIds.length) return;
+    state.service = combinedVisit();
     state.date = null;
     state.startMs = null;
     state.month = null;
@@ -240,7 +278,7 @@
       el('strong', { text: s.name }),
       el('span', { class: 'bk-service-meta', text: duration(s.duration) + ' · ' + price(s.price) }),
     ]));
-    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda teenust', onclick: function () { history.back(); } }));
+    box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda valikut', onclick: function () { history.back(); } }));
   }
 
   function renderStep2() {
@@ -262,7 +300,7 @@
       $('calendar').hidden = true;
       $('times').innerHTML = '';
       $('times').appendChild(el('p', { class: 'bk-empty' }, [
-        'Järgmise kahe kuu jooksul sellele teenusele vabu aegu ei ole. Palun helista ',
+        'Järgmise kahe kuu jooksul sellele valikule vabu aegu ei ole. Palun helista ',
         el('a', { href: 'tel:+37255697525', text: PHONE }), ', küll leiame aja.',
       ]));
       area.className = '';
@@ -334,19 +372,10 @@
     state.requestId = newRequestId();
     status('');
     renderSummary();
-    $('submit-btn').textContent = submitLabel();
+    $('submit-btn').textContent = 'Saada broneeringusoov';
     show('step-3', true);
   }
 
-  /** Times starting soon are requests that Ilvi confirms personally. */
-  function needsApproval(ms) {
-    var av = state.availability;
-    return !!(av && av.approvalBeforeMs && ms < av.approvalBeforeMs);
-  }
-
-  function submitLabel() {
-    return state.startMs && needsApproval(state.startMs) ? 'Saada broneeringusoov' : 'Kinnita broneering';
-  }
 
   $('cal-prev').addEventListener('click', function () { state.month = monthShift(state.month, -1); renderCalendar(); });
   $('cal-next').addEventListener('click', function () { state.month = monthShift(state.month, 1); renderCalendar(); });
@@ -358,15 +387,12 @@
     var box = $('summary');
     box.innerHTML = '';
     box.appendChild(el('dl', {}, [
-      el('dt', { text: 'Teenus' }), el('dd', { text: s.name }),
+      el('dt', { text: 'Teenused' }), el('dd', { text: s.name }),
       el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(ms).date) + ' kell ' + timeOf(ms) + '–' + timeOf(ms + s.duration * 60000) }),
       el('dt', { text: 'Hind' }), el('dd', { text: price(s.price) + ' (tasumine kohapeal)' }),
     ]));
     box.appendChild(el('button', { type: 'button', class: 'bk-link', text: 'Muuda aega', onclick: function () { history.back(); } }));
-    if (needsApproval(ms)) {
-      box.appendChild(el('p', { class: 'bk-approval-note', text: 'See aeg on juba varsti, seega kinnitab Ilvi selle isiklikult. ' +
-        'Saad kinnituse e-postile, tavaliselt mõne tunni jooksul.' }));
-    }
+    box.appendChild(el('p', { class: 'bk-approval-note', text: 'Saadame Sulle esmalt teate, et soov on kätte saadud. Aeg on kindel alles pärast Ilvi kinnitust. Veebis saad soovi või broneeringu tühistada, kui alguseni on vähemalt 24 tundi.' }));
   }
 
   var EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[A-Za-z]{2,}$/;
@@ -397,11 +423,12 @@
     if (firstBad) { $('f-' + firstBad).focus(); return; }
     var btn = $('submit-btn');
     btn.disabled = true;
-    btn.textContent = 'Broneerin…';
+    btn.textContent = 'Saadan soovi…';
     status('');
     api('POST', {
       action: 'book',
-      serviceId: state.service.id,
+      serviceIds: state.selectedIds.slice(),
+      trial: trial,
       startMs: state.startMs,
       name: form.name.value,
       phone: form.phone.value,
@@ -419,6 +446,7 @@
         history.back(); // back to the time list, without stacking history entries
         return;
       }
+      if (r.error === 'booking_closed') { show('offline', false); return; }
       if (r.error === 'unavailable' || r.error === 'daily_limit') {
         return status('Veebibroneerimine on täna ajutiselt suletud. Palun helista ' + PHONE + ' või kirjuta WhatsAppis.', 'warn');
       }
@@ -432,7 +460,7 @@
       status('Ühendus katkes. Palun vajuta nuppu uuesti: kui aeg jõudis juba kinni panna, topelt broneeringut ei teki.', 'error');
     }).finally(function () {
       btn.disabled = false;
-      btn.textContent = submitLabel();
+      btn.textContent = 'Saada broneeringusoov';
     });
   });
 
@@ -441,18 +469,19 @@
   function done(b, email) {
     state.booking = b;
     var pending = b.status === 'pending';
-    $('done-h').textContent = pending ? 'Soov on saadetud!' : 'Aeg on broneeritud!';
+    $('done-h').textContent = pending ? 'Soov on kätte saadud' : 'Aeg on broneeritud!';
     $('ics-btn').hidden = pending; // nothing to add before Ilvi confirms
     var body = $('done-body');
     body.innerHTML = '';
     body.appendChild(el('dl', { class: 'bk-summary-dl' }, [
-      el('dt', { text: 'Teenus' }), el('dd', { text: b.serviceName }),
+      el('dt', { text: 'Teenused' }), el('dd', { text: b.serviceName }),
       el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(b.startMs).date) + ' kell ' + timeOf(b.startMs) + '–' + timeOf(b.startMs + b.durationMin * 60000) }),
+      el('dt', { text: 'Kokku' }), el('dd', { text: duration(b.durationMin) + ' · ' + price(b.price) }),
       el('dt', { text: 'Aadress' }), el('dd', {}, ['Pargi 10-10, Tartu', el('br'), 'Välisuksel vali number 10']),
     ]));
     if (pending) {
-      body.appendChild(el('p', {}, ['Aeg on Sinu jaoks kinni hoitud. Kuna see on juba varsti, kinnitab Ilvi selle isiklikult. ',
-        el('strong', { text: 'Kinnituse saad e-postile' }), b.mailed === false ? '.' : ' (' + email + ').']));
+      body.appendChild(el('p', {}, [el('strong', {text:'Aeg ei ole veel kinnitatud.'}), ' Ilvi vaatab soovi üle ja saadab vastuse aadressile ', el('strong', {text:email}), '.']));
+      if (b.mailed === false) body.appendChild(el('p', {text:'Soov on kirjas, kuid esimest e-kirja ei õnnestunud saata.'}));
       body.appendChild(el('p', {}, ['Kiire küsimuse korral helista ', el('a', { href: 'tel:+37255697525', text: PHONE }), '.']));
     } else if (b.mailed === false) {
       body.appendChild(el('p', {}, ['Sinu aeg on kirjas, kuid kinnituskirja saatmine ebaõnnestus. Tühistamiseks või küsimustega helista ',
@@ -503,7 +532,7 @@
       $('cancel-h').textContent = pending ? 'Broneeringusoovi tagasivõtmine' : 'Broneeringu tühistamine';
       box.appendChild(el('p', { text: 'Tere, ' + b.firstName + '!' + (pending ? ' Ilvi pole seda soovi veel kinnitanud.' : '') }));
       box.appendChild(el('dl', { class: 'bk-summary-dl' }, [
-        el('dt', { text: 'Teenus' }), el('dd', { text: b.serviceName }),
+        el('dt', { text: 'Teenused' }), el('dd', { text: b.serviceName }),
         el('dt', { text: 'Aeg' }), el('dd', { text: dayLabel(S.localParts(b.startMs).date) + ' kell ' + timeOf(b.startMs) }),
       ]));
       if (!b.cancellable) {
@@ -549,21 +578,30 @@
       startCancel(id, token);
       return;
     }
-    if (cfg.bookingOpen === false) {
+    if (cfg.bookingOpen === false && !trial) {
       $('offline').querySelector('h2').textContent = 'Veebibroneerimine avatakse peagi';
       show('offline', false);
       return;
     }
     history.replaceState({ panel: 'step-1' }, '');
     show('step-1', null);
-    loadAvailability().catch(function () {});
+    var avReady = loadAvailability();
+    if (trial && cfg.bookingOpen === false) {
+      $('trial-note').hidden = false;
+      avReady.catch(function () { show('offline', false); status('Proovilinki ei õnnestunud avada. Kontrolli linki ja internetiühendust.', 'warn'); });
+    } else { avReady.catch(function () {}); }
     loadServices().then(function () {
       renderServices('');
       var pre = params.get('teenus');
-      if (pre && state.byId[pre]) chooseService(pre, true);
+      if (pre && state.byId[pre]) { togglePick(pre); var preBtn = document.querySelector('.bk-service[aria-pressed="true"]'); if (preBtn) preBtn.closest('details').open = true; }
+      else renderPicks();
     }).catch(function () { show('offline', false); });
     $('service-search').addEventListener('input', function (e) { renderServices(e.target.value); });
   }
 
+  window.addEventListener('hashchange', function () {
+    var next = new URLSearchParams(location.hash.slice(1)).get('proov');
+    if (next && next !== trial && /^[A-Za-z0-9_-]{24,64}$/.test(next)) location.reload();
+  });
   init();
 })();

@@ -58,7 +58,8 @@ test('default hours: Mon, Tue, Thu, Fri 9:30-20:00; Wed, Sat, Sun closed; 8 week
   ['2026-11-04', '2026-11-07', '2026-11-08'].forEach(d => assert.ok(!days.has(d), d));
   assert.deepEqual(av.windows[0], [L('2026-11-02', '09:30'), L('2026-11-02', '20:00')]);
   assert.equal(av.horizonEndMs, L(S.addDays('2026-11-02', 56), '00:00'));
-  assert.equal(av.approvalBeforeMs, NOW + 36 * 3600000, 'the page can tell which times are requests');
+  assert.equal(av.requiresApproval, true);
+  assert.equal(av.approvalBeforeMs, av.horizonEndMs, 'old clients see all starts as requests');
   const mon = S.computeSlots({ windows: av.windows, busy: [], durationMin: 60, bufferMin: 15, stepMin: 15, notBeforeMs: av.notBeforeMs })
     .filter(ms => S.localParts(ms).date === '2026-11-09').map(ms => S.localParts(ms).time);
   assert.equal(mon[0], '09:30');
@@ -169,7 +170,7 @@ test('overview lists bookings, her own events and all-day blocks for 8 weeks', (
   assert.equal(thu.bookings.length, 1);
   assert.deepEqual(
     [thu.bookings[0].time, thu.bookings[0].end, thu.bookings[0].service, thu.bookings[0].name, thu.bookings[0].phone, thu.bookings[0].pending],
-    ['10:00', '11:00', 'Näopuhastus', 'Mari Maasikas', '+37255551234', false]);
+    ['10:00', '11:00', 'Näopuhastus', 'Mari Maasikas', '+37255551234', true]);
   assert.deepEqual(thu.other, [{ time: '12:00', end: '13:00', summary: 'Hambaarst' }]);
   assert.deepEqual(thu.allDay, []);
   assert.deepEqual(ov.days.find(d => d.date === '2026-11-06').allDay, ['Puhkus']);
@@ -178,7 +179,7 @@ test('overview lists bookings, her own events and all-day blocks for 8 weeks', (
 
 // ---------- approvals ----------
 
-test('bookings starting within 36 h become requests; later ones are instant', () => {
+test('near and distant online bookings both wait for Ilvi', () => {
   const gas = setup();
   const soon = book(gas, L('2026-11-03', '10:00')); // 26 h ahead
   assert.equal(soon.ok, true, JSON.stringify(soon));
@@ -190,7 +191,7 @@ test('bookings starting within 36 h become requests; later ones are instant', ()
   assert.doesNotMatch(toCustomer.subject, /kinnitatud/i);
   assert.ok(approvalLink(gas, soon.booking.id), 'owner gets an approval link');
   const later = book(gas, L('2026-11-05', '10:00'), { email: 'teine@example.com', phone: '5000 0002' });
-  assert.equal(later.booking.status, 'confirmed');
+  assert.equal(later.booking.status, 'pending');
   const taken = book(gas, L('2026-11-03', '10:00'), { email: 'kolmas@example.com', phone: '5000 0003' });
   assert.equal(taken.error, 'slot_taken', 'a request holds its slot');
 });
@@ -253,6 +254,7 @@ test('unanswered requests expire 2 h before the start and both sides are told', 
 test('the hourly run never touches confirmed bookings or approved requests', () => {
   const gas = setup();
   const confirmed = book(gas, L('2026-11-05', '10:00'));
+  assert.equal(gas.post({action:'admin_decide',id:confirmed.booking.id,t:approvalLink(gas,confirmed.booking.id),decision:'approve'}).ok,true);
   const req = book(gas, L('2026-11-03', '10:00'), { email: 'b@example.com', phone: '5000 0006' });
   assert.equal(gas.post({ action: 'admin_decide', id: req.booking.id, t: approvalLink(gas, req.booking.id), decision: 'approve' }).ok, true);
   for (const at of [L('2026-11-03', '09:00'), L('2026-11-05', '08:30'), L('2026-11-05', '09:30')]) {
@@ -263,7 +265,7 @@ test('the hourly run never touches confirmed bookings or approved requests', () 
   assert.deepEqual(ids, [confirmed.booking.id, req.booking.id].sort());
 });
 
-test('a customer can withdraw a pending request even inside 24 h', () => {
+test('a customer can withdraw a pending request 26 h before the visit', () => {
   const gas = setup();
   const r = book(gas, L('2026-11-03', '10:00'));
   const t = cancelToken(gas, r.booking.id);
@@ -344,7 +346,7 @@ test('overlaps and gaps under 15 minutes are reported; saved only when she insis
   const add = extra => gas.post(Object.assign({ action: 'admin_add_event', s, date: '2026-11-05', durationMin: 30 }, extra));
   const r = add({ time: '11:05', name: 'Kati' });
   assert.equal(r.error, 'overlap');
-  assert.deepEqual(r.conflicts, [{ date: '2026-11-05', time: '10:00', end: '11:00', summary: 'Mari Maasikas · Näopuhastus' }]);
+  assert.deepEqual(r.conflicts, [{ date: '2026-11-05', time: '10:00', end: '11:00', summary: 'OOTAB KINNITUST · Mari Maasikas · Näopuhastus' }]);
   assert.equal(gas.calendar.api.Events.list('primary', {}).items.length, 1, 'nothing saved');
   assert.equal(add({ time: '11:05', name: 'Kati', force: true }).ok, true);
   assert.equal(add({ time: '11:50' }).ok, true, 'exactly 15 minutes after is fine');

@@ -71,6 +71,13 @@
       <button type="button" class="adm-btn primary adm-add-btn" id="add-open">＋ Lisa aeg</button>
       <section id="pending" aria-label="Ootavad kinnitust"></section>
 
+      <section class="adm-card" aria-label="Tühistamised">
+        <details class="adm-more"><summary><h2 id="cancel-count">Tühistamised</h2></summary>
+          <p class="adm-muted">Viimase 14 päeva jooksul veebis või siin halduses tühistatud ajad, tagasi võetud, tagasi lükatud ja aegunud soovid.</p>
+          <ul id="cancel-log" class="adm-events"></ul>
+        </details>
+      </section>
+
       <section class="adm-card adm-days-card">
         <h2>Järgmised 8 nädalat</h2>
         <p class="adm-muted adm-help">Lüliti avab või sulgeb päeva uutele broneeringutele. Puuduta päeva, et muuta kellaaegu või näha broneeringuid.</p>
@@ -100,7 +107,7 @@
 
       <section class="adm-card adm-info">
         <p>Klientide broneeringud tulevad Sinu Google'i kalendrisse. Kui lisad kalendrisse oma sündmuse (nt arst või telefoni teel kokku lepitud klient), on see aeg veebis kinni.</p>
-        <p class="adm-links"><a href="/broneeri/" target="_blank" rel="noopener">Ava broneerimisleht</a> · <button type="button" class="adm-link" id="logout-btn">Logi välja</button></p>
+        <p class="adm-links"><a id="customer-view" href="/broneeri/" target="_blank" rel="noopener noreferrer">Ava kliendivaade</a> · <button type="button" class="adm-link" id="logout-btn">Logi välja</button></p>
       </section>
     </div>
 

@@ -13,7 +13,7 @@ const iso = ms => new Date(ms).toISOString();
 const PINNED = {
   OWNER_EMAIL: 'ilvi.test@example.com',
   WEEKLY_HOURS: { 1: [['10:00', '18:00']], 2: [['10:00', '18:00']], 3: [['10:00', '18:00']], 4: [['10:00', '18:00']], 5: [['10:00', '18:00']], 6: [['10:00', '15:00']] },
-  APPROVAL_WITHIN_HOURS: 0,
+  REQUIRE_APPROVAL: false,
   HORIZON_DAYS: 60,
 };
 function setup(config) {

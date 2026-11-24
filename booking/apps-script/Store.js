@@ -50,7 +50,29 @@ function getBookingEvent_(id) {
   return ev;
 }
 
-/** Updates private properties; the full map is sent so nothing depends on patch merge rules. */
+/** Private, short-lived receipt for a removed online visit. Never keep contact details or notes here.
+ * Each receipt has its own property to avoid the 9KB per-value limit; hourly maintenance deletes old ones.
+ * Called only after successful calendar removal and under the existing script lock. */
+function recordCancellation_(ev, reason) {
+  try {
+    var p = privateProps_(ev);
+    PropertiesService.getScriptProperties().setProperty('CXL:' + ev.id, JSON.stringify({
+      at: nowMs(), startMs: eventStartMs_(ev), name: p.name || '', service: p.serviceName || '', reason: reason
+    }));
+  } catch (err) { console.error('Cancellation history write failed: ' + err); }
+}
+function recentCancellations_(prune) {
+  var props = PropertiesService.getScriptProperties(), values = props.getProperties();
+  var since = nowMs() - 14 * DAY_MS, rows = [];
+  Object.keys(values).forEach(function (key) {
+    if (key.indexOf('CXL:') !== 0) return;
+    var row = JSON.parse(values[key]);
+    if (row.at > since) rows.push(row);
+    else if (prune) props.deleteProperty(key);
+  });
+  return rows.sort(function (a,b) { return b.at - a.at; });
+}
+
 /** The event's private properties with `changes` applied (patch replaces the whole map). */
 function mergedPrivate_(ev, changes) {
   var props = {};

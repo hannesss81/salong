@@ -3,7 +3,7 @@
 Customers book at `https://pargiilustuudio.eu/broneeri/`. Bookings land in Ilvi's Google Calendar
 as normal events; customers get confirmation, reminder and cancellation e-mails from her Gmail.
 Ilvi opens and closes days, changes hours, adds appointments she arranges herself and answers
-short-notice requests on her phone at `https://pargiilustuudio.eu/broneeri/haldus/`
+online requests on her phone at `https://pargiilustuudio.eu/broneeri/haldus/`
 ("Minu tööajad"). Costs nothing to run.
 
 ```
@@ -33,6 +33,10 @@ booking/
   test/              node:test suites
 ```
 
+## Invitation-only live trial (2026-11-24)
+
+The real customer trial opens `/broneeri/#proov=…` and uses the production calendar and mail. The plain `/broneeri/` and homepage stay in their closed state. The customer invitation allows availability and requests only; it cannot open management. Ilvi signs in at `/broneeri/haldus/`, where **Ava kliendivaade** also gives her a working customer link. The repository contains only the digest, not the distributed invitation; rotate or clear `TRIAL_INVITE_HASH` and redeploy to replace/revoke trial links. The self-contained phone/desktop customer preview lives in `artifacts/pargi-client-review-2026-11-24/proovibroneering.html` in the workspace. It uses the client page and booking/mail logic with a fictional calendar and in-memory inbox; there is no network transport or persistence. Rebuild it from the workspace with `python3 projects/pargi-ilustuudio/tools/build-client-preview.py artifacts/pargi-client-review-2026-11-24/proovibroneering.html`.
+
 ## How it works
 
 - Hours: by default Mon, Tue, Thu, Fri 9:30-20:00 (the last client finishes by 20:00);
@@ -40,12 +44,13 @@ booking/
   rolling. On the admin page Ilvi switches single days open or closed, sets a day's hours,
   closes a date range (vacation) or changes the default week. A day's setting beats the
   default and the holiday rule. Stored in Script Properties (`SCHEDULE`); past days are pruned.
-- Bookings starting within 36 h are **requests**: the slot is held (yellow event titled
+- Customers can select one or more distinct bookable services. Their prices and durations add up, with no gap inside the single visit. Availability, the calendar event, the owner’s review and all emails use that whole visit. The 15-minute buffer still separates different visits.
+- All online bookings are **requests**: the slot is held (yellow event titled
   `OOTAB KINNITUST · ...`), the customer is told Ilvi will confirm, and Ilvi gets a "Kinnita:"
   e-mail with a link to approve or decline (the link works without logging in; it signs the
   event id). Approving sends the normal confirmation; declining frees the slot and tells the
   customer. Requests not answered 2 h before the start are withdrawn by the hourly trigger and
-  both sides are told. Customers can withdraw a request at any time. Later bookings are instant.
+  both sides are told. Both pending requests and confirmed visits can be cancelled online when at least 24 hours remain, including exactly 24 hours. Inside that window the customer is asked to call.
 - "Lisa aeg": appointments she arranges by phone or in person (until now in her paper notebook)
   are added on her page with date, time, service or duration, and optionally name, phone and a
   note. Any day up to a year ahead, opening hours or not. They are calendar events (colour
@@ -54,7 +59,7 @@ booking/
   if she insists. She can delete these from her page (not online bookings or other events).
 - `bookingOpen` in `broneeri/config.js`: `false` keeps online booking closed (booking page says
   "avatakse peagi", price list without "Broneeri" links) while her page and cancel links work.
-  Used before launch so her notebook appointments go in first.
+  Before public launch, also leave `PUBLIC_BOOKING_OPEN: false` on the backend: only validated invitations can create real booking requests or fetch times. At the agreed launch, deploy the revised backend with this flag on, then enable the public page. Do not open either for a design review.
 - Admin login: the page asks the backend to e-mail a login link to OWNER_EMAIL only (5 a day at
   most). The link holds a 30-minute single-use token, swapped for a one-year session kept in
   the phone's browser. `admin_logout_all` (or bumping `ADMIN_VERSION` in Script Properties)
@@ -136,8 +141,8 @@ hourly trigger created, e-mail quota left today: 100.`
 ## Settings (Config.js)
 
 - `WEEKLY_HOURS` (defaults until she changes them on the admin page), `OPEN_DAY_DEFAULT`.
-- `MIN_NOTICE_MIN` (3 h), `CANCEL_DEADLINE_HOURS` (24, still to confirm with Ilvi),
-  `HORIZON_DAYS` (56), `APPROVAL_WITHIN_HOURS` (36), `REQUEST_EXPIRE_BEFORE_MIN` (120).
+- `MIN_NOTICE_MIN` (3 h), `CANCEL_DEADLINE_HOURS` (24, confirmed on 2026-11-24),
+  `HORIZON_DAYS` (56), `REQUIRE_APPROVAL` (true), `REQUEST_EXPIRE_BEFORE_MIN` (120).
 - `CLOSED_ON_PUBLIC_HOLIDAYS` (true), `ALL_DAY_EVENTS_BLOCK` (true): an all-day event she adds
   (e.g. "Puhkus") closes the day.
 
@@ -149,10 +154,8 @@ hourly trigger created, e-mail quota left today: 100.`
   laupäev on vaikimisi suletud: laupäeva avamiseks lülita see roheliseks. Päeva puudutades
   näed broneeringuid ja saad muuta kellaaegu. "Puhkus" sulgeb mitu päeva korraga.
   Sisse logid e-posti lingiga (üks kord telefonis).
-- Uus veebibroneering ilmub Sinu Google'i kalendrisse (roheline) ja tuleb ka e-kiri
-  "Uus broneering". Kirjas on kliendi telefon ja e-post; vastates kirjutad otse kliendile.
-- Lähema 36 tunni broneeringud on **soovid**: kalendris kollasena ("OOTAB KINNITUST") ja
-  e-kiri "Kinnita: ...". Vajuta kirjas nuppu ja vali Kinnita või Lükka tagasi; klient saab
+- Kõik veebist saadetud broneeringud on esmalt **soovid**. Ühel külastusel võib olla mitu teenust. Kliendi andmed on kirjas ja ootel aeg on kalendris kollasena ("OOTAB KINNITUST") ja
+  Sulle tuleb e-kiri "Kinnita: ...". Vajuta kirjas nuppu ja vali Kinnita või Lükka tagasi; klient saab
   kirja ise. Kui Sa ei vasta, võetakse soov 2 tundi enne algust tagasi.
 - **Lisa aeg**: telefoni teel või kohapeal kokku lepitud kliendi paned kirja nupuga
   „＋ Lisa aeg“: kuupäev, kellaaeg, teenus (kestus tuleb ise). Nimi ja telefon soovi korral.
@@ -160,9 +163,9 @@ hourly trigger created, e-mail quota left today: 100.`
   Märkmikku pole enam vaja: kõik ajad on lehel ja Google'i kalendris.
 - Muu kinni panemiseks (arst, koolitus) võid lisada sündmuse ka Google'i kalendrisse.
   Terve päeva sündmus (nt "Puhkus") sulgeb päeva.
-- Kui klient tühistab lingiga, kaob sündmus kalendrist ja Sulle tuleb kiri "Tühistatud".
-- Kui Sina pead aja muutma või tühistama: helista kliendile ja muuda/kustuta sündmus
-  kalendris. Klient automaatset kirja selle kohta ei saa.
+- **Ootavad kinnitust**: kinnita soov või lükka see tagasi. Kinnitatud aeg on vastava kuupäeva all.
+- **Tühistamised** näitab viimase 14 päeva tühistamisi, ka tagasi võetud, tagasilükatud ja aegunud soove. Kliendi tühistatud aeg vabaneb automaatselt. Uuendamiseks vajuta ↻.
+- Vajadusel saad päeva vaates kinnitatud veebiaja ise tühistada nupuga **Tühista**. Klient saab teate. Google’i kalendris otse tehtud kustutuse kohta teade ei lähe ja seda halduse tühistamiste nimekirja ei lisata.
 
 ## Known gaps / next
 

@@ -92,13 +92,29 @@ function checkCustomer_(body) {
 
 // ---------- create ----------
 
+/** One visit, priced and timed from the catalogue, never from client totals. */
+function visitServices_(body) {
+  var catalog = services_();
+  var ids = body.serviceIds === undefined ? [body.serviceId] : body.serviceIds;
+  if (!Array.isArray(ids) || !ids.length || ids.length > Object.keys(catalog).length) return null;
+  var names = [], minutes = 0, total = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    if (typeof id !== 'string' || !Object.prototype.hasOwnProperty.call(catalog, id) || ids.indexOf(id) !== i) return null;
+    var item = catalog[id];
+    names.push(item.name); minutes += Number(item.duration); total += Number(item.price);
+  }
+  return { id: ids[0], ids: ids, name: names.join(' + '), duration: minutes, price: total };
+}
+
 function createBooking_(body) {
-  var service = services_()[String(body.serviceId || '')];
+  if (!customerBookingAllowed_(body.trial)) return { ok: false, error: 'booking_closed' };
+  var service = visitServices_(body);
   if (!service) return { ok: false, error: 'invalid_service' };
   var startMs = Number(body.startMs);
   if (body.website) { // honeypot field humans never see: answer like a success, do nothing
     return { ok: true, booking: { id: 'x', serviceId: service.id, serviceName: service.name, price: service.price,
-      startMs: startMs, durationMin: service.duration, firstName: '', mailed: true } };
+      status: 'pending', startMs: startMs, durationMin: service.duration, firstName: '', mailed: true } };
   }
   var checked = checkCustomer_(body);
   if (checked.bad.length) return { ok: false, error: 'invalid', fields: checked.bad };
@@ -123,7 +139,7 @@ function createBooking_(body) {
       }
     }
     if (startMs < h.now || startMs >= h.toMs) return { ok: false, error: 'slot_taken' };
-    var pending = CONFIG.APPROVAL_WITHIN_HOURS > 0 && startMs - h.now < CONFIG.APPROVAL_WITHIN_HOURS * HOUR_MS;
+    var pending = CONFIG.REQUIRE_APPROVAL !== false;
 
     var upcoming = listBookings_(h.now, h.toMs).filter(function (b) {
       var p = privateProps_(b);
@@ -181,7 +197,6 @@ function bookingEvent_(service, startMs, c, createdMs, requestId, pending) {
   ];
   if (c.comment) lines.push('Kommentaar: ' + c.comment);
   lines.push('', 'Broneeritud veebis ' + formatShortEt_(createdMs) + '.');
-  if (pending) lines.push('Lühikese etteteatamisega soov: kinnita või lükka tagasi e-kirja lingilt või haldusest.');
   return {
     summary: (pending ? 'OOTAB KINNITUST · ' : '') + c.name + ' · ' + service.name,
     location: CONFIG.ADDRESS,
@@ -194,6 +209,7 @@ function bookingEvent_(service, startMs, c, createdMs, requestId, pending) {
       private: {
         pargi: '1',
         serviceId: service.id,
+        serviceIds: JSON.stringify(service.ids),
         serviceName: service.name,
         price: String(service.price),
         name: c.name,
@@ -216,6 +232,7 @@ function bookingSummary_(ev) {
   return {
     id: ev.id,
     serviceId: p.serviceId,
+    serviceIds: p.serviceIds ? JSON.parse(p.serviceIds) : [p.serviceId], // existing single-service events
     serviceName: p.serviceName,
     price: Number(p.price),
     startMs: startMs,
@@ -233,7 +250,7 @@ function lookupBooking_(id, t) {
   var ev = getBookingEvent_(id);
   if (!ev) return { ok: false, error: 'not_found' };
   var b = bookingSummary_(ev);
-  b.cancellable = b.status === 'pending' || nowMs() < b.cancelDeadlineMs; // a request can always be withdrawn
+  b.cancellable = nowMs() <= b.cancelDeadlineMs;
   return { ok: true, booking: b };
 }
 
@@ -246,8 +263,9 @@ function cancelBooking_(id, t) {
     ev = getBookingEvent_(id);
     if (!ev) return { ok: false, error: 'not_found' };
     booking = bookingSummary_(ev);
-    if (booking.status !== 'pending' && nowMs() >= booking.cancelDeadlineMs) return { ok: false, error: 'too_late' };
+    if (nowMs() > booking.cancelDeadlineMs) return { ok: false, error: 'too_late' };
     Calendar.Events.remove(CONFIG.CALENDAR_ID, id);
+    recordCancellation_(ev, booking.status === 'pending' ? 'withdrawn' : 'client_cancelled');
     invalidateAvailability_();
   } finally {
     lock.releaseLock();
@@ -264,6 +282,7 @@ function cancelBooking_(id, t) {
 function hourly() {
   try {
     expireRequests_();
+    recentCancellations_(true);
   } catch (err) {
     console.error('expiring requests failed: ' + ((err && err.stack) || err));
   }
@@ -281,6 +300,7 @@ function expireRequests_() {
       if (privateProps_(ev).state !== 'pending') return;
       try {
         Calendar.Events.remove(CONFIG.CALENDAR_ID, ev.id);
+        recordCancellation_(ev, 'expired');
         expired.push(ev);
       } catch (err) {
         console.error('could not expire ' + ev.id + ': ' + err);
@@ -324,7 +344,7 @@ function remindOne_(ev, now) {
   setPrivateProps_(ev, { reminderFor: key });
   var booking = bookingSummary_(ev);
   booking.token = token_(ev.id);
-  booking.cancellable = now < booking.cancelDeadlineMs;
+  booking.cancellable = now <= booking.cancelDeadlineMs;
   var ok = sendSafely_(function () { mailReminder_(booking, { name: p.name, email: p.email }); });
   if (!ok) setPrivateProps_(ev, { reminderFor: '' });
 }

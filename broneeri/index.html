@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Broneeri aeg – Pargi Ilustuudio</title>
   <meta name="description" content="Broneeri aeg Pargi Ilustuudiosse Tartus: vali teenus, sobiv päev ja kellaaeg." />
+  <meta name="referrer" content="no-referrer" />
   <meta name="theme-color" content="#f8f8f6" />
   <link rel="canonical" href="https://pargiilustuudio.eu/broneeri/" />
   <meta property="og:title" content="Broneeri aeg – Pargi Ilustuudio" />
-  <meta property="og:description" content="Vali teenus, sobiv päev ja kellaaeg. Kinnitus tuleb e-postile." />
+  <meta property="og:description" content="Vali teenused ja sobiv aeg. Ilvi vaatab soovi üle ja vastab e-postile." />
   <meta property="og:url" content="https://pargiilustuudio.eu/broneeri/" />
   <meta property="og:image" content="https://pargiilustuudio.eu/assets/og-image.jpg" />
   <meta property="og:locale" content="et_EE" />
@@ -33,8 +34,10 @@
   <main id="main" class="bk" tabindex="-1">
     <h1 class="bk-title">Broneeri aeg</h1>
 
+    <p id="trial-note" class="bk-approval-note" hidden><strong>Proovibroneerimine.</strong> Sinu soov jõuab päriselt Ilvi kalendrisse ja teated saadetakse e-postile.</p>
+
     <ol class="bk-steps" aria-label="Broneerimise sammud">
-      <li data-step="1"><span>1</span> Teenus</li>
+      <li data-step="1"><span>1</span> Teenused</li>
       <li data-step="2"><span>2</span> Aeg</li>
       <li data-step="3"><span>3</span> Andmed</li>
     </ol>
@@ -43,13 +46,18 @@
 
     <!-- Step 1: service -->
     <section class="bk-panel" id="step-1" aria-labelledby="step-1-h">
-      <h2 id="step-1-h" tabindex="-1">Vali teenus</h2>
+      <h2 id="step-1-h" tabindex="-1">Vali teenused</h2>
+      <p class="bk-intro">Ühele külastusele võid valida mitu teenust. Näitame aegu, kuhu kogu külastus ära mahub.</p>
       <label class="bk-search">
         <span class="visually-hidden">Otsi teenust</span>
         <input type="search" id="service-search" placeholder="Otsi teenust, nt näopuhastus" autocomplete="off" />
       </label>
       <div id="service-list" class="bk-services">
         <p class="bk-loading">Laen teenuseid…</p>
+      </div>
+      <div class="bk-pickbar">
+        <div id="picked-services" aria-live="polite">Ühtegi teenust pole valitud.</div>
+        <button type="button" id="pick-next" class="cta booking" disabled>Vali aeg →</button>
       </div>
     </section>
 
@@ -100,14 +108,14 @@
           <input id="f-website" name="website" tabindex="-1" autocomplete="off" />
         </div>
         <p class="bk-note">Andmeid kasutame ainult Sinu broneeringu jaoks. <a href="/broneeri/privaatsus.html">Privaatsusteave</a></p>
-        <button type="submit" class="cta booking bk-submit" id="submit-btn">Kinnita broneering</button>
+        <button type="submit" class="cta booking bk-submit" id="submit-btn">Saada broneeringusoov</button>
       </form>
     </section>
 
     <!-- Done -->
     <section class="bk-panel bk-done" id="step-done" aria-labelledby="done-h" hidden>
       <div class="bk-check" aria-hidden="true">✓</div>
-      <h2 id="done-h" tabindex="-1">Aeg on broneeritud!</h2>
+      <h2 id="done-h" tabindex="-1">Soov on kätte saadud</h2>
       <div id="done-body"></div>
       <div class="bk-actions">
         <button type="button" class="cta outline" id="ics-btn">Lisa oma kalendrisse</button>

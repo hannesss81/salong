@@ -20,7 +20,7 @@ const LATENCY = Number(process.env.LATENCY_MS == null ? 700 : process.env.LATENC
 const SITE = path.join(__dirname, '..', '..');
 const ORIGIN = 'http://127.0.0.1:' + PORT;
 
-const gas = createGas({ quiet: true, config: { OWNER_EMAIL: 'ilvi.dev@example.com', SITE_URL: ORIGIN } });
+const gas = createGas({ quiet: true, config: { OWNER_EMAIL: 'ilvi.dev@example.com', SITE_URL: ORIGIN, PUBLIC_BOOKING_OPEN: process.env.BOOKING_OPEN !== '0' } });
 
 function seed() {
   const today = S.localParts(Date.now()).date;

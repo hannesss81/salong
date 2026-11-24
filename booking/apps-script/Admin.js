@@ -75,6 +75,7 @@ function handleAdmin_(body) {
     case 'admin_set_weekly': return adminSetWeekly_(body.weekly);
     case 'admin_add_event': return adminAddEvent_(body);
     case 'admin_delete_event': return adminDeleteEvent_(body.id);
+    case 'admin_cancel_online': return adminCancelOnline_(body.id);
     case 'admin_logout_all':
       PropertiesService.getScriptProperties().setProperty('ADMIN_VERSION', String(Number(adminVersion_()) + 1));
       return { ok: true };
@@ -213,9 +214,11 @@ function adminOverview_() {
     weekly: schedule.weekly,
     weeklyIsDefault: !stored.weekly,
     openDefault: CONFIG.OPEN_DAY_DEFAULT,
-    approvalHours: CONFIG.APPROVAL_WITHIN_HOURS,
+    requiresApproval: CONFIG.REQUIRE_APPROVAL !== false,
     days: days,
     pending: pending,
+    cancellations: recentCancellations_(false),
+    customerTrial: CONFIG.PUBLIC_BOOKING_OPEN !== true ? ownerTrialInvite_() : '',
   };
 }
 
@@ -292,6 +295,7 @@ function adminDecide_(id, decision) {
       }, CONFIG.CALENDAR_ID, id);
     } else {
       Calendar.Events.remove(CONFIG.CALENDAR_ID, id);
+      recordCancellation_(ev, 'declined');
     }
     invalidateAvailability_();
   } finally {
@@ -308,6 +312,24 @@ function adminDecide_(id, decision) {
     mailed = sendSafely_(function () { mailDeclined_(booking, c); });
   }
   return { ok: true, status: booking.status, mailed: mailed };
+}
+
+/** Ilvi may cancel a confirmed online appointment after speaking with the client, even inside 24 h.
+ * Only a full admin session may reach this action, not an individual approval link. */
+function adminCancelOnline_(id) {
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var ev, booking, p;
+  try {
+    ev = getBookingEvent_(id);
+    if (!ev) return {ok:false,error:'not_found'};
+    p = privateProps_(ev); booking = bookingSummary_(ev);
+    if (booking.status !== 'confirmed' || booking.startMs <= nowMs()) return {ok:false,error:'invalid'};
+    Calendar.Events.remove(CONFIG.CALENDAR_ID,id);
+    recordCancellation_(ev, 'owner_cancelled');
+    invalidateAvailability_();
+  } finally { lock.releaseLock(); }
+  var mailed = sendSafely_(function () { mailCancelled_(booking, {name:p.name, email:p.email}); });
+  return {ok:true,mailed:mailed};
 }
 
 // ---------- her own appointments ("Lisa aeg") ----------

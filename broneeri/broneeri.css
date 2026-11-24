@@ -53,6 +53,20 @@
 .bk-service-meta { color: var(--accent-strong); font-size: 0.9rem; font-weight: 500; }
 .bk-service-desc { color: var(--text-muted); font-size: 0.85rem; }
 
+/* A single visit may contain services from different categories. */
+.bk-intro { color: var(--text-muted); margin: -.35rem 0 1rem; }
+.bk-service[aria-pressed="true"] { border: 2px solid var(--accent-strong); background: #eaf5ed; }
+.bk-service[aria-pressed="true"] .bk-service-name::before { content: '✓ '; color: var(--accent-strong); }
+.bk-pickbar { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .8rem -.25rem -.25rem; padding: .75rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+.bk-pickbar .cta { white-space: nowrap; flex-shrink: 0; }
+.bk-pickbar .cta:disabled { opacity: .48; cursor: default; }
+.bk-picked-list { max-height: 5rem; overflow: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
+.bk-picked-item { font: inherit; font-size: .85rem; background: var(--bg); border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; padding: .25rem .4rem; text-align: left; }
+.bk-summary { flex-wrap: wrap; }
+.bk-summary .bk-approval-note { flex-basis: 100%; }
+.bk-chosen > *, .bk-summary dd { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 460px) { .bk-pickbar { flex-wrap: wrap; } .bk-pickbar .cta { width: 100%; } }
+
 /* step 2 */
 .bk-chosen, .bk-summary { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; background: var(--bg-warm);
   border-radius: var(--radius-sm); padding: 0.8rem 1rem; margin-bottom: 1.25rem; }

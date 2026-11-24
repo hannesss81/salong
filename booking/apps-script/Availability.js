@@ -117,7 +117,8 @@ function getAvailability_() {
     ok: true,
     generatedMs: h.now,
     notBeforeMs: h.now + CONFIG.MIN_NOTICE_MIN * MINUTE_MS,
-    approvalBeforeMs: h.now + CONFIG.APPROVAL_WITHIN_HOURS * HOUR_MS, // earlier starts are requests
+    requiresApproval: CONFIG.REQUIRE_APPROVAL !== false,
+    approvalBeforeMs: CONFIG.REQUIRE_APPROVAL !== false ? h.toMs : h.now, // older clients
     horizonEndMs: h.toMs,
     bufferMin: CONFIG.BUFFER_MIN,
     stepMin: CONFIG.STEP_MIN,

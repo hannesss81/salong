@@ -143,6 +143,7 @@ function createGas(options) {
     PropertiesService: {
       getScriptProperties() {
         return {
+          getProperties() { return Object.fromEntries(props); },
           getProperty(k) { return props.has(k) ? props.get(k) : null; },
           setProperty(k, v) { props.set(k, String(v)); return this; },
           deleteProperty(k) { props.delete(k); return this; },
@@ -150,6 +151,8 @@ function createGas(options) {
       },
     },
     Utilities: {
+      DigestAlgorithm: {SHA_256:'sha256'},
+      computeDigest(algo, value) { return toSignedBytes(crypto.createHash(algo).update(value, 'utf8').digest()); },
       computeHmacSha256Signature(value, key) {
         return toSignedBytes(crypto.createHmac('sha256', key).update(value, 'utf8').digest());
       },
@@ -199,7 +202,8 @@ function createGas(options) {
   const ctx = vm.createContext(sandbox);
   const files = fs.readdirSync(GAS_DIR).filter(f => f.endsWith('.js')).sort();
   files.forEach(f => vm.runInContext(fs.readFileSync(path.join(GAS_DIR, f), 'utf8'), ctx, { filename: f }));
-  if (options.config) vm.runInContext('Object.assign(CONFIG, ' + JSON.stringify(options.config) + ')', ctx);
+  // Local fakes model an open salon unless a test explicitly exercises pre-launch.
+  vm.runInContext('Object.assign(CONFIG, ' + JSON.stringify(Object.assign({ PUBLIC_BOOKING_OPEN: true }, options.config)) + ')', ctx);
 
   function parse(out) { return JSON.parse(out.getContent()); }
   return {

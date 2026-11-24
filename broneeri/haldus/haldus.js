@@ -168,6 +168,8 @@
 
   function render() {
     renderPending();
+    renderCancellations();
+    $('customer-view').href = '/broneeri/' + (state.data.customerTrial ? '#proov=' + state.data.customerTrial : '');
     renderDays();
     renderWeekly();
     var today = state.data.today;
@@ -204,8 +206,9 @@
       : adminApi({ action: 'admin_decide', id: b.id, decision: decision });
     return call.then(function (r) {
       if (r.ok) {
-        toast(decision === 'approve' ? 'Kinnitatud. Klient sai kinnituse e-postile.' : 'Tagasi lükatud. Klient sai teate.', 'ok');
-        onDone(decision);
+        var sent = r.mailed !== false;
+        toast((decision === 'approve' ? 'Kinnitatud. ' : 'Tagasi lükatud. ') + (sent ? 'Teade on saadetud.' : 'Kiri ei läinud teele. Palun helista kliendile.'), sent ? 'ok' : 'warn');
+        onDone(decision,sent);
       } else if (r.error === 'not_pending' || r.error === 'not_found') {
         toast('Seda soovi enam pole (juba otsustatud, tagasi võetud või aegunud).', 'warn');
         onDone(null);
@@ -219,8 +222,8 @@
     var box = $('pending');
     box.innerHTML = '';
     var list = state.data.pending;
-    if (!list.length) return;
-    box.appendChild(el('h2', { class: 'adm-pending-h', text: plural(list.length, 'soov ootab', 'soovi ootavad') + ' kinnitust' }));
+    box.appendChild(el('h2', {class:'adm-pending-h', text:'Ootavad kinnitust (' + list.length + ')'}));
+    if (!list.length) {box.appendChild(el('p',{class:'adm-muted',text:'Praegu ei oota ükski soov vastust.'}));return;}
     list.forEach(function (b) {
       var card = el('div', { class: 'adm-card adm-req' }, bookingLines(b));
       card.appendChild(el('div', { class: 'adm-actions' }, [
@@ -228,6 +231,19 @@
         el('button', { type: 'button', class: 'adm-btn', text: 'Lükka tagasi', onclick: function () { decide(b, 'decline', {}, applyDecision(b)); } }),
       ]));
       box.appendChild(card);
+    });
+  }
+
+  function renderCancellations() {
+    var rows=state.data.cancellations || [], box=$('cancel-log');
+    var reasons={withdrawn:'Klient võttis soovi tagasi',client_cancelled:'Klient tühistas aja',owner_cancelled:'Ilvi tühistas aja',declined:'Ilvi lükkas soovi tagasi',expired:'Soov aegus'};
+    $('cancel-count').textContent='Tühistamised (' + rows.length + ')'; box.textContent='';
+    if (!rows.length) box.appendChild(el('li',{text:'Tühistamisi veel ei ole.'}));
+    rows.forEach(function(r){
+      var visit=S.localParts(r.startMs), changed=S.localParts(r.at);
+      box.appendChild(el('li',{},[el('div',{},[
+        el('strong',{text:dateShort(visit.date)+' kell '+hm(visit.time)+' · '+r.name}),
+        el('div',{text:r.service}),el('small',{text:(reasons[r.reason] || 'Tühistatud')+' · '+dateShort(changed.date)+' kell '+hm(changed.time)})])]));
     });
   }
 
@@ -240,6 +256,7 @@
         day.bookings.forEach(function (x) { if (x.id === b.id) x.pending = false; });
       }
       render();
+      if (decision !== 'approve') loadMain();
     };
   }
 
@@ -365,13 +382,22 @@
           b.comment && b.manual ? el('span', { class: 'adm-muted', text: ' · ' + b.comment }) : null,
           b.pending ? el('em', { text: ' (ootab kinnitust)' }) : null]),
         withDelete && b.manual ? el('button', { type: 'button', class: 'adm-del', text: 'Kustuta', 'aria-label': 'Kustuta ' + hm(b.time) + ' ' + who,
-          onclick: function () { deleteManual(b); } }) : null,
+          onclick: function () { deleteManual(b); } }) : withDelete && !b.manual && !b.pending && b.startMs > Date.now() ? el('button', {type:'button', class:'adm-del', text:'Tühista', onclick:function(){cancelOnline(b);}}) : null,
       ]);
     }).concat(day.other.map(function (o) {
       return el('li', { class: 'is-other' }, [el('span', { class: 'adm-time', text: hm(o.time) + '–' + hm(o.end) }), el('span', { text: o.summary })]);
     }));
     items.sort(function (a, b) { return a.firstChild.textContent.localeCompare(b.firstChild.textContent, 'et', { numeric: true }); });
     return items;
+  }
+
+  function cancelOnline(b) {
+    if (!confirm('Tühistan broneeringu ' + dateShort(b.date) + ' kell ' + hm(b.time) + ' (' + b.name + ')? Klient saab tühistamise kohta e-kirja.')) return;
+    adminApi({action:'admin_cancel_online', id:b.id}).then(function (r) {
+      if (!r.ok) { toast('Aega ei õnnestunud tühistada. Värskenda vaadet.', 'warn'); return loadMain(); }
+      toast(r.mailed ? 'Tühistatud. Teade on saadetud.' : 'Tühistatud, kuid kiri ei läinud teele. Palun helista kliendile.', r.mailed ? 'ok' : 'warn');
+      loadMain();
+    }).catch(saveError);
   }
 
   function deleteManual(b) {
@@ -642,11 +668,11 @@
         box.appendChild(backToMain());
         return;
       }
-      var finish = function (decision) {
+      var finish = function (decision,sent) {
         box.innerHTML = '';
         box.appendChild(el('p', { class: 'adm-ok', text: decision === 'approve'
-          ? 'Kinnitatud! ' + b.name + ' sai kinnituse e-postile.'
-          : decision === 'decline' ? 'Tagasi lükatud. ' + b.name + ' sai teate.' : 'Seda soovi enam pole.' }));
+          ? 'Kinnitatud. ' + (sent ? 'Teade on saadetud.' : 'Kiri ei läinud teele. Palun helista kliendile.')
+          : decision === 'decline' ? 'Tagasi lükatud. ' + (sent ? 'Teade on saadetud.' : 'Kiri ei läinud teele. Palun helista kliendile.') : 'Seda soovi enam pole.' }));
         box.appendChild(backToMain());
       };
       box.appendChild(el('div', { class: 'adm-actions' }, [

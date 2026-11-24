@@ -36,7 +36,9 @@ var CONFIG = {
   STEP_MIN: 15,                    // start times on the quarter hour
   MIN_NOTICE_MIN: 180,             // earliest booking: 3 h from now
   HORIZON_DAYS: 56,                // how far ahead customers can book (rolling 8 weeks)
-  APPROVAL_WITHIN_HOURS: 36,       // bookings starting sooner than this are requests Ilvi confirms
+  PUBLIC_BOOKING_OPEN: false,      // pre-launch: admin work and cancellation still work
+  TRIAL_INVITE_HASH: 'AFLzfo2FmqPpIlxkU8RTk9DwcId8y_BEQNLexp4yyjA', // SHA-256 of the customer trial invitation; empty disables trials
+  REQUIRE_APPROVAL: true,          // every online visit needs Ilvi’s personal confirmation
   REQUEST_EXPIRE_BEFORE_MIN: 120,  // unanswered requests are withdrawn this long before the start
   PENDING_COLOR_ID: '5',           // Google Calendar colour of unconfirmed requests (5 = Banana)
   ADMIN_LOGIN_PER_DAY: 5,          // login e-mails to Ilvi per day at most
